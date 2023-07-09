@@ -60,6 +60,7 @@ type ChainStatus = {
 };
 
 type CovalentBatchResponseData = {
+  address: string;
   chainInfos: ChainInfo[];
   chainActivity: ChainActivityEvent[];
   balances: Balance[];
@@ -67,17 +68,20 @@ type CovalentBatchResponseData = {
 };
 
 type RawCovalentResponse = {
-  data: {
-    updated_at: string;
-    items: any[];
-  };
+  data: CovalentResponseData;
   error: boolean;
   error_message: null | string;
   error_code: null | string;
 };
 
+type CovalentResponseData = {
+  updated_at: string;
+  address: string;
+  items: any[];
+}
 
-async function fetchChainInfo(): Promise<ChainInfo[]> {
+
+async function fetchChainInfo(): Promise<CovalentResponseData> {
   const response = await fetch('https://api.covalenthq.com/v1/chains/', {
     method: 'GET',
     headers: cov_req_headers,
@@ -88,11 +92,11 @@ async function fetchChainInfo(): Promise<ChainInfo[]> {
   }
 
   const rawResult: RawCovalentResponse = await response.json();
-  const res: ChainInfo[] = rawResult.data.items;
+  const res: CovalentResponseData = rawResult.data;
   return res;
 }
 
-async function fetchChainStatus(): Promise<ChainStatus[]> {
+async function fetchChainStatus(): Promise<CovalentResponseData> {
   const response = await fetch('https://api.covalenthq.com/v1/chains/status/', {
     method: 'GET',
     headers: cov_req_headers,
@@ -103,11 +107,11 @@ async function fetchChainStatus(): Promise<ChainStatus[]> {
   }
 
   const rawResult: RawCovalentResponse = await response.json();
-  const res: ChainStatus[] = rawResult.data.items;
+  const res: CovalentResponseData = rawResult.data;
   return res;
 }
 
-async function fetchBalances(userConfig: UserConfig): Promise<Balance[]> {
+async function fetchBalances(userConfig: UserConfig): Promise<CovalentResponseData> {
   const response = await fetch('https://api.covalenthq.com/v1/' + userConfig.chain + '/address/' + userConfig.address + '/balances_v2/?quote-currency=' + userConfig.currency, {
     method: 'GET',
     headers: cov_req_headers,
@@ -118,11 +122,11 @@ async function fetchBalances(userConfig: UserConfig): Promise<Balance[]> {
   }
 
   const rawResult: RawCovalentResponse = await response.json();
-  const res: Balance[] = rawResult.data.items;
+  const res: CovalentResponseData = rawResult.data;
   return res;
 }
 
-async function fetchTransactionSummary(userConfig: UserConfig): Promise<TransactionSummary[]> {
+async function fetchTransactionSummary(userConfig: UserConfig): Promise<CovalentResponseData> {
   const response = await fetch('https://api.covalenthq.com/v1/' + userConfig.chain + '/address/' + userConfig.address + '/transactions_summary/', {
     method: 'GET',
     headers: cov_req_headers,
@@ -133,11 +137,11 @@ async function fetchTransactionSummary(userConfig: UserConfig): Promise<Transact
   }
 
   const rawResult: RawCovalentResponse = await response.json();
-  const res: TransactionSummary[] = rawResult.data.items;
+  const res: CovalentResponseData = rawResult.data;
   return res;
 }
 
-async function fetchChainActivity(userConfig: UserConfig): Promise<ChainActivityEvent[]> {
+async function fetchChainActivity(userConfig: UserConfig): Promise<CovalentResponseData> {
   const response = await fetch('https://api.covalenthq.com/v1/labs/activity/' + userConfig.address + '/', {
     method: 'GET',
     headers: cov_req_headers,
@@ -148,12 +152,12 @@ async function fetchChainActivity(userConfig: UserConfig): Promise<ChainActivity
   }
 
   const rawResult: RawCovalentResponse = await response.json();
-  const res: ChainActivityEvent[] = rawResult.data.items;
+  const res: CovalentResponseData = rawResult.data;
   return res;
 }
 
 async function fetchCovalentData(userConfig: UserConfig): Promise<CovalentBatchResponseData> {
-    const [chains, chainActivity, balances, transactionSummary] = await Promise.all([
+    const [chainsResp, chainActivityResp, balancesResp, transactionSummaryResp] = await Promise.all([
       fetchChainInfo(),
       fetchChainActivity(userConfig),
       fetchBalances(userConfig),
@@ -161,10 +165,11 @@ async function fetchCovalentData(userConfig: UserConfig): Promise<CovalentBatchR
     ]);
 
     const res:CovalentBatchResponseData = {
-        chainInfos: chains,
-        chainActivity: chainActivity,
-        balances: balances,
-        transactionSummary: transactionSummary,
+        chainInfos: chainsResp.items,
+        chainActivity: chainActivityResp.items,
+        balances: balancesResp.items,
+        address: balancesResp.address,
+        transactionSummary: transactionSummaryResp.items,
     };
 
     return res;
@@ -176,7 +181,8 @@ function findChainByChainName(chainName: string, chainInfos: ChainInfo[]): Chain
 }
 
 function buildSVG(userConfig: UserConfig, covalentData: CovalentBatchResponseData): string {
-  const address: string = userConfig.address;
+  const userSuppliedAddress: string = userConfig.address;
+  const isNonstandardAddress: boolean = covalentData.address != userSuppliedAddress.toLowerCase();
   const chainInfo: ChainInfo = findChainByChainName(userConfig.chain, covalentData.chainInfos);
   const chainLabel: string = chainInfo.label;
   const chainLogoUrl: string = chainInfo.logo_url;
@@ -197,12 +203,12 @@ function buildSVG(userConfig: UserConfig, covalentData: CovalentBatchResponseDat
     </rect> 
 
     <svg x="8%" y="10%">
-      <text x="0%" y="0%" dominant-baseline="text-before-edge" text-anchor="start" fill="white" font-size="${address.length >= 42 ? '12' : '19'}">
-        ${address}
+      <text x="0%" y="0%" dominant-baseline="text-before-edge" text-anchor="start" fill="white" font-size="${userSuppliedAddress.length >= 42 ? '12' : '19'}">
+        ${userSuppliedAddress}
       </text>
 
-      <text x="2%" y="6.5%" dominant-baseline="text-before-edge" text-anchor="start" fill="white" font-size="10">
-        hex address here if exists
+      <text x="2%" y="7%" dominant-baseline="text-before-edge" text-anchor="start" fill="white" font-size="10">
+        ${isNonstandardAddress ? covalentData.address : ''}
       </text>
 
       <text x="5%" y="18%" dominant-baseline="text-before-edge" text-anchor="start" fill="white" font-size="14">
