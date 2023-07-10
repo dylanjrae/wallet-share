@@ -202,8 +202,6 @@ async function buildSVG(userConfig: UserConfig, covalentData: CovalentBatchRespo
   const lastActivityDate: Date | undefined = covalentData.transactionSummary != undefined ? new Date(covalentData.transactionSummary[0].latest_transaction.block_signed_at) : undefined;
   const lastActivityStr: string = lastActivityDate != undefined ? lastActivityDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
 
-  //TODO need to fetch images first and save as data:
-
   const svg: string = `
   <svg id="visual" viewBox="0 0 450 300" width="450" height="300" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1">
     <rect x="0" y="0" width="100%" height="100%" rx="12" ry="12" fill="0x151515">
