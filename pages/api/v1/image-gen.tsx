@@ -175,23 +175,34 @@ async function fetchCovalentData(userConfig: UserConfig): Promise<CovalentBatchR
     return res;
 }
 
+async function fetchBase64Image(url: string): Promise<string> {
+  const response = await fetch(url);
+  const imageBlob = await response.blob();
+  const base64Image = btoa(await imageBlob.text());
+
+  return `data:image/svg+xml;base64,${base64Image}`;
+
+}
+
 function findChainByChainName(chainName: string, chainInfos: ChainInfo[]): ChainInfo {
   const foundChain: ChainInfo | undefined = chainInfos.find(chain => chain.name === chainName);
   return foundChain ? foundChain : chainInfos[0];
 }
 
-function buildSVG(userConfig: UserConfig, covalentData: CovalentBatchResponseData): string {
+async function buildSVG(userConfig: UserConfig, covalentData: CovalentBatchResponseData): Promise<string> {
   const userSuppliedAddress: string = userConfig.address;
   const isNonstandardAddress: boolean = covalentData.address != userSuppliedAddress.toLowerCase();
   const chainInfo: ChainInfo = findChainByChainName(userConfig.chain, covalentData.chainInfos);
   const chainLabel: string = chainInfo.label;
-  const chainLogoUrl: string = chainInfo.logo_url;
+  const chainLogoUrl: string = await fetchBase64Image(chainInfo.logo_url);
   const txCount: number = covalentData.transactionSummary != undefined ? covalentData.transactionSummary[0].total_count : 0;
   const chainCount: number = covalentData.chainActivity.length;
   const firstActivityDate: Date | undefined = covalentData.transactionSummary != undefined ? new Date(covalentData.transactionSummary[0].earliest_transaction.block_signed_at) : undefined;
   const firstActivityStr: string = firstActivityDate != undefined ? firstActivityDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
   const lastActivityDate: Date | undefined = covalentData.transactionSummary != undefined ? new Date(covalentData.transactionSummary[0].latest_transaction.block_signed_at) : undefined;
   const lastActivityStr: string = lastActivityDate != undefined ? lastActivityDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+
+  //TODO need to fetch images first and save as data:
 
   const svg: string = `
   <svg id="visual" viewBox="0 0 450 300" width="450" height="300" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1">
@@ -250,9 +261,8 @@ export default async function handler(
     const userConfig: UserConfig = new UserConfig(req);
     const covalentData: CovalentBatchResponseData = await fetchCovalentData(userConfig);
     
-    const svg: string = buildSVG(userConfig, covalentData);
+    const svg: string = await buildSVG(userConfig, covalentData);
 
     res.setHeader('Content-Type', 'image/svg+xml');
-    res.setHeader('Content-Security-Policy', "img-src 'self' https://www.datocms-assets.com/86369/");
     res.send(svg);
 }
