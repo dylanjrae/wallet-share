@@ -253,5 +253,6 @@ export default async function handler(
     const svg: string = buildSVG(userConfig, covalentData);
 
     res.setHeader('Content-Type', 'image/svg+xml');
+    res.setHeader('Content-Security-Policy', "img-src 'self' https://www.datocms-assets.com/86369/");
     res.send(svg);
 }
