@@ -189,6 +189,23 @@ function findChainByChainName(chainName: string, chainInfos: ChainInfo[]): Chain
   return foundChain ? foundChain : chainInfos[0];
 }
 
+function calculateWalletNetWorth(balances: Balance[]): number {
+  let netWorth: number = 0;
+  balances.forEach(balance => {
+    netWorth += balance.quote;
+  });
+  return netWorth;
+}
+
+function formatAsCurrency(amount: number, currencyCode: string): string {
+  const formattedNumber = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currencyCode,
+  }).format(amount);
+
+  return formattedNumber;
+}
+
 async function buildSVG(userConfig: UserConfig, covalentData: CovalentBatchResponseData): Promise<string> {
   const userSuppliedAddress: string = userConfig.address;
   const isNonstandardAddress: boolean = covalentData.address != userSuppliedAddress.toLowerCase();
@@ -201,6 +218,7 @@ async function buildSVG(userConfig: UserConfig, covalentData: CovalentBatchRespo
   const firstActivityStr: string = firstActivityDate != undefined ? firstActivityDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
   const lastActivityDate: Date | undefined = covalentData.transactionSummary != undefined ? new Date(covalentData.transactionSummary[0].latest_transaction.block_signed_at) : undefined;
   const lastActivityStr: string = lastActivityDate != undefined ? lastActivityDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+  const netWorth: string = formatAsCurrency(calculateWalletNetWorth(covalentData.balances), userConfig.currency);
 
   const svg: string = `
   <svg id="visual" viewBox="0 0 450 300" width="450" height="300" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1">
@@ -243,6 +261,17 @@ async function buildSVG(userConfig: UserConfig, covalentData: CovalentBatchRespo
           ${firstActivityStr ? `First activity: ${firstActivityStr}` : ''}
         </text>
       </svg>
+
+      <svg x="1%" y="50%">
+        <text x="0%" y="0%" dominant-baseline="text-before-edge" text-anchor="start" fill="white" font-size="22">
+          Net Worth
+        </text>
+
+        <text x="5%" y="10%" dominant-baseline="text-before-edge" text-anchor="start" fill="white" font-size="14">
+          ${netWorth}
+        </text>
+      </svg>
+
     </svg>
 
   </svg>

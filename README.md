@@ -35,4 +35,5 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/deploym
 
 
 
-Test: ![stats](https://wallet-share.dylanrae.ca/api/v1/image-gen?currency=CAD&chain=matic-mainnet&address=@lensprotocol)
+Test:
+![stats](https://wallet-share.dylanrae.ca/api/v1/img_generator?currency=CAD&chain=matic-mainnet&address=@lensprotocol)
