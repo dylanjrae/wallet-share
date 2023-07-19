@@ -5,7 +5,7 @@ export default function Home() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-between">
       <div>
-        <h1>Wallet SVG Generator</h1>
+        <h1 className="text-center">Wallet SVG Generator</h1>
         <ImageForm />
       </div>
     </main>

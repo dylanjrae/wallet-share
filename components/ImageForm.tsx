@@ -16,8 +16,9 @@ const ImageForm: React.FC = () => {
   };
 
   return (
-    <div>
+    <div className="flex flex-col items-center">
       <input
+        className="my-60px"
         type="text"
         value={addressInput}
         onChange={(e) => setAddressInput(e.target.value)}
@@ -39,7 +40,11 @@ const ImageForm: React.FC = () => {
         <option value="EUR">EUR</option>
         <option value="INR">INR</option>
       </select>
-      <button onClick={handleGenerateClick}>Generate</button>
+      <button 
+        className="border border-gray-500 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-700"
+        onClick={handleGenerateClick}>
+          Generate
+      </button>
       <p>{imageUrl}</p>
       <img src={imageUrl} alt="The generated svg displaying a summary for a wallet" />
     </div>
