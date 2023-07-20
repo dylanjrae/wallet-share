@@ -15,10 +15,14 @@ const ImageForm: React.FC = () => {
     setImageUrl(generatedUrl);
   };
 
+  const handleUrlClick = () => {
+    navigator.clipboard.writeText(imageUrl);  
+  };
+
   return (
-    <div className="flex flex-col items-center">
+    <div className="flex flex-col gap-2 items-center">
       <input
-        className="my-60px"
+        className="border border-gray-500 text-black"
         type="text"
         value={addressInput}
         onChange={(e) => setAddressInput(e.target.value)}
@@ -26,6 +30,7 @@ const ImageForm: React.FC = () => {
       <select
         value={chainInput}
         onChange={(e) => setChainInput(e.target.value)}
+        className="text-black"
       >
         <option value="eth-mainnet">Ethereum Mainnet</option>
         <option value="matic-mainnet">Polygon Mainnet</option>
@@ -34,6 +39,7 @@ const ImageForm: React.FC = () => {
       <select
         value={currencyInput}
         onChange={(e) => setCurrencyInput(e.target.value)}
+        className="text-black"
       >
         <option value="USD">USD</option>
         <option value="CAD">CAD</option>
@@ -45,7 +51,9 @@ const ImageForm: React.FC = () => {
         onClick={handleGenerateClick}>
           Generate
       </button>
-      <p>{imageUrl}</p>
+      <p className = "cursor-pointer"
+      onClick={handleUrlClick}
+      >{imageUrl}</p>
       <img src={imageUrl} alt="The generated svg displaying a summary for a wallet" />
     </div>
   );
