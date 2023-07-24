@@ -198,9 +198,9 @@ function calculateWalletNetWorth(balances: Balance[]): number {
   return netWorth;
 }
 
-type Quotes = "USD" | "CAD";
+// type Quotes = "USD" | "CAD";
 
-function formatAsCurrency(amount: number, currencyCode: Quotes ): string {
+function formatAsCurrency(amount: number, currencyCode: string ): string {
   const formattedNumber = new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: currencyCode,
