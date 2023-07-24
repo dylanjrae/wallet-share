@@ -1,6 +1,7 @@
 // Next.js API route support: https://nextjs.org/docs/api-routes/introduction
 import type { NextApiRequest, NextApiResponse } from 'next'
 import build from 'next/dist/build';
+// import { Client } from '@covalenthq/client-sdk';
 
 const cov_key = process.env.COVALENT_KEY;
 const cov_req_headers = new Headers();
@@ -197,7 +198,9 @@ function calculateWalletNetWorth(balances: Balance[]): number {
   return netWorth;
 }
 
-function formatAsCurrency(amount: number, currencyCode: string): string {
+type Quotes = "USD" | "CAD";
+
+function formatAsCurrency(amount: number, currencyCode: Quotes ): string {
   const formattedNumber = new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: currencyCode,
