@@ -84,7 +84,7 @@ const ImageForm: React.FC = () => {
           Generate
       </button>
       <p 
-        className = "cursor-pointer tracking-widest text-white text-xs border border-gray-500 bg-slate-900 hover:bg-violet-950 px-4 py-2 rounded"
+        className = "cursor-pointer tracking-widest text-white text-xs border border-gray-500 bg-slate-900 hover:bg-violet-950 px-4 py-2 rounded w-[50rem] ellipses truncate"
         onClick={handleUrlClick}
       >
         {imageUrl}
