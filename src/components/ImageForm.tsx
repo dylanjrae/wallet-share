@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { API_URL } from '../../helpers';
+import LoadingAnimation from './LoadingAnimation';
 
 const ImageForm: React.FC = () => {
   const [addressInput, setAddressInput] = useState('demo.eth');
@@ -9,15 +10,16 @@ const ImageForm: React.FC = () => {
   const [currencyInput, setCurrencyInput] = useState('USD');
   const [cardStyle, setCardStyle] = useState('default');
   const [imageUrl, setImageUrl] = useState(`${API_URL}/api/v1/img_generator/?address=${addressInput}&chain=${chainInput}&currency=${currencyInput}&style=${cardStyle}`);
-  const [imgLoading, setImgLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [objectKey, setObjectKey] = useState(Math.random());
 
   const handleGenerateClick = () => {
-    setImgLoading(true);
+    setIsLoading(true);
     const baseUrl = `${API_URL}/api/v1/img_generator/`;
     const queryParams = `?address=${addressInput}&chain=${chainInput}&currency=${currencyInput}&style=${cardStyle}`;
     const generatedUrl = baseUrl + queryParams;
     setImageUrl(generatedUrl);
-    // setImgLoading(false);
+    setObjectKey(Math.random());
   };
 
   const handleUrlClick = () => {
@@ -89,11 +91,18 @@ const ImageForm: React.FC = () => {
       >
         {imageUrl}
       </p>
-      <object 
+
+      {isLoading && <LoadingAnimation />}
+      
+      <object
+        key={objectKey}
         data={imageUrl} 
         type="image/svg+xml"
-        onLoad={() => setImgLoading(false)}
-        onError={() => setImgLoading(false)}
+        onLoad={() => {
+          console.log('loading started')
+          setIsLoading(false);
+        }}
+
       />
     </div>
   );
