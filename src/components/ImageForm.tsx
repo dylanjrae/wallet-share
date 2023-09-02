@@ -99,7 +99,6 @@ const ImageForm: React.FC = () => {
         data={imageUrl} 
         type="image/svg+xml"
         onLoad={() => {
-          console.log('loading started')
           setIsLoading(false);
         }}
 
