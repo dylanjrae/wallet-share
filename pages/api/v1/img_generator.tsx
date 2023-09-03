@@ -2,7 +2,6 @@
 import { Client } from '@covalenthq/client-sdk';
 import { Chains, Quotes } from '@covalenthq/client-sdk/dist/services/Client';
 import type { NextApiRequest, NextApiResponse } from 'next'
-import build from 'next/dist/build';
 
 
 if (!process.env.COVALENT_KEY) {
@@ -10,9 +9,6 @@ if (!process.env.COVALENT_KEY) {
 }
 const cov_key: string = process.env.COVALENT_KEY;
 const covaClient: Client = new Client(cov_key);
-
-const cov_req_headers = new Headers();
-cov_req_headers.set('Authorization', 'Bearer ' + cov_key);
 
 class UserConfig {
   chain: Chains;
