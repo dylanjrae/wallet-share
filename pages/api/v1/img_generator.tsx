@@ -117,7 +117,7 @@ type SVGProps = {
     children: ReactNode;
 };
 
-const SVG = ({ height, width, children }: SVGProps) => {
+const SVGWrapper = ({ height, width, children }: SVGProps) => {
     const viewBoxWidth: number = width;
     const viewBoxHeight: number = height;
 
@@ -146,13 +146,39 @@ const Address = ({userConfig, covalentData}: {userConfig: UserConfig, covalentDa
     );
 };
 
-const ChainCounter = ({userConfig, covalentData}: {userConfig: UserConfig, covalentData: CovalentBatchResponseData}) => {
-    const chainCount: number = covalentData.chainActivity.length;
-
+const ChainLogo = ({img, size}: {img: string, size: number}) => {
     return (
-        <text font-size="16">
-            {chainCount} {chainCount === 1 ? 'Chain' : 'Chains'}
-        </text>
+        <image xlinkHref={img} width={size} height={size} />
+    );
+};
+
+const ChainCounter = ({userConfig, covalentData, logos}: CardContentProps) => {
+    const chainLogos: JSX.Element[] = [];
+    const chainCount: number = covalentData.chainActivity.length;    
+    const logoCount: number = Math.min(9, logos.size);
+    var i: number = 0;
+
+    for (let [key, value] of logos) {
+        const row = Math.floor(i / 3);
+        const col = i % 3;
+        chainLogos.push(
+            <Translate x={col * 20} y={row * 20}>
+                <ChainLogo key={key} img={value} size={15} />
+            </Translate>
+        );
+        i++;
+        if (i >= 9) break;
+    }
+    
+    return (
+        <g>
+            <text font-size="16">
+                {chainCount} {chainCount === 1 ? 'Chain' : 'Chains'}
+            </text>
+            <Translate x={15} y= {20}>
+                {chainLogos}
+            </Translate>
+        </g>
     );
 };
 
@@ -180,7 +206,13 @@ const ActivitySummary = ({userConfig, covalentData}: {userConfig: UserConfig, co
     );
 };
 
-const CardContent = ({userConfig, covalentData}: {userConfig: UserConfig, covalentData: CovalentBatchResponseData}) => {
+type CardContentProps = {
+    userConfig: UserConfig;
+    covalentData: CovalentBatchResponseData;
+    logos: Map<string, string>;
+};
+
+const CardContent = ({userConfig, covalentData, logos}: CardContentProps) => {
     const chainInfo: ChainInfo = findChainByChainName(userConfig.chain, covalentData.chainInfos);
     const chainLabel: string = chainInfo.label;
 
@@ -188,11 +220,14 @@ const CardContent = ({userConfig, covalentData}: {userConfig: UserConfig, covale
         <g dominant-baseline="text-before-edge" text-anchor="start" fill={userConfig.fillColor} font-family={userConfig.fontFamily}>
             <Address userConfig={userConfig} covalentData={covalentData} />
             <Translate x={295} y={0}>
-                <ChainCounter userConfig={userConfig} covalentData={covalentData} />
+                <ChainCounter userConfig={userConfig} covalentData={covalentData} logos={logos}/>
             </Translate>
             <Translate x={0} y={0}>
                 <ActivitySummary userConfig={userConfig} covalentData={covalentData} />
             </Translate>
+            {/* <Translate x={0} y={0}> */}
+                {/* <NetWorthDisplay userConfig={userConfig} covalentData={covalentData} /> */}
+            {/* </Translate> */}
             
         </g>
     );
@@ -205,8 +240,8 @@ const Background = () => {
                 <animate attributeName="fill" values="#808080; #151515; #808080" dur="3s" repeatCount="indefinite" />
             </rect>
 
-            <Translate x={3} y={4.5}>
-                <rect width="98%" height="98%" rx="10" ry="10" fill="0x151515">
+            <Translate x={4.5} y={3}>
+                <rect width="98%" height="96%" rx="10" ry="10" fill="0x151515">
                 </rect> 
             </Translate>
         </g>
@@ -214,21 +249,40 @@ const Background = () => {
     );
 };
 
-function buildSVG(userConfig: UserConfig, covalentData: CovalentBatchResponseData): string {
-    const height: number = 300;
+function buildSVG(userConfig: UserConfig, covalentData: CovalentBatchResponseData, logos: Map<string, string>): string {
+    const height: number = 150;
     const width: number = 450;
 
     const svg: string = renderToStaticMarkup(
-        <SVG height={height} width={width}>
+        <SVGWrapper height={height} width={width}>
             <Background />
 
             <Translate x={36} y={30}>
-                <CardContent userConfig={userConfig} covalentData={covalentData}/>
+                <CardContent userConfig={userConfig} covalentData={covalentData} logos={logos}/>
             </Translate>
-        </SVG>
+        </SVGWrapper>
     );
 
     return svg;
+}
+
+async function fetchBase64Image(url: string): Promise<string> {
+    const response = await fetch(url);
+    const imageBlob = await response.blob();
+    const base64Image = btoa(await imageBlob.text());
+  
+    return `data:image/svg+xml;base64,${base64Image}`;
+  }
+
+async function fetchChainLogos(covalentData: CovalentBatchResponseData): Promise<Map<string, string>> {
+    const logos: Map<string, string> = new Map<string, string>();
+
+    for (const event of covalentData.chainActivity) {
+        const base64Image = await fetchBase64Image(event.logo_url);
+        logos.set(event.name, base64Image);
+    }
+
+    return logos;
 }
 
 export default async function handler(
@@ -237,9 +291,11 @@ export default async function handler(
   ) {
       const userConfig: UserConfig = new UserConfig(req);
       const covalentData: CovalentBatchResponseData = await fetchCovalentData(userConfig, covaClient);
+      const logos: Map<string, string> = await fetchChainLogos(covalentData);
+
       //preprocess logos or other async info here with await and pass in separately
       
-      const svg: string = buildSVG(userConfig, covalentData);
+      const svg: string = buildSVG(userConfig, covalentData, logos);
   
       res.setHeader('Content-Type', 'image/svg+xml');
       res.send(svg);
