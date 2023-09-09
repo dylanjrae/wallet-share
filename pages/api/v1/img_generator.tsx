@@ -146,11 +146,19 @@ const Address = ({userConfig, covalentData}: {userConfig: UserConfig, covalentDa
     );
 };
 
-const ChainLogo = ({img, size}: {img: string, size: number}) => {
+const ChainLogo = ({img, size, link}: {img: string, size: number, link: string}) => {
     return (
-        <image xlinkHref={img} width={size} height={size} />
-    );
+        link ? (
+          <a href={link} target="_blank" rel="noopener noreferrer">
+            <image xlinkHref={img} width={size} height={size} />
+          </a>
+        ) : (
+          <image xlinkHref={img} width={size} height={size} />
+        )
+      );
 };
+
+
 
 const ChainCounter = ({userConfig, covalentData, logos}: CardContentProps) => {
     const chainLogos: JSX.Element[] = [];
@@ -161,9 +169,10 @@ const ChainCounter = ({userConfig, covalentData, logos}: CardContentProps) => {
     for (let [key, value] of logos) {
         const row = Math.floor(i / 3);
         const col = i % 3;
+        const blockScannerLink = generateBlockScannerLink(key, covalentData.address)
         chainLogos.push(
-            <Translate x={col * 20} y={row * 20}>
-                <ChainLogo key={key} img={value} size={15} />
+            <Translate key={"translate-"+key} x={col * 20} y={row * 20}>
+                <ChainLogo key={"chainlogo-"+key} img={value} size={15} link={blockScannerLink}/>
             </Translate>
         );
         i++;
@@ -283,6 +292,31 @@ async function fetchChainLogos(covalentData: CovalentBatchResponseData): Promise
     }
 
     return logos;
+}
+
+const blockScannerAddressLinks: Map<string, string> = new Map<string, string>([
+    ["eth-mainnet", "https://etherscan.io/address/"],
+    ["matic-mainnet", "https://polygonscan.com/address/"],
+    ["bsc-mainnet", "https://bscscan.com/address/"],
+    ["avalanche-mainnet", "https://avascan.info/blockchain/c/address/"],
+    ["fantom-mainnet", "https://ftmscan.com/address/"],
+    ["zora-mainnet", "https://explorer.zora.energy/address/"],
+    ["arbitrum-nova-mainnet", "https://nova.arbiscan.io/address/"],
+    ["arbitrum-mainnet", "https://arbiscan.io/address/"],
+    ["moonbeam-moonriver", "https://moonscan.io/address/"],
+    ["optimism-mainnet", "https://optimistic.etherscan.io/address/"],
+    ["linea-mainnet", "https://lineascan.build/address/"],
+    ["base-mainnet", "https://basescan.org/address/"],
+    ["mantle-mainnet", "https://mantlescan.info/address/"],
+]);
+
+function generateBlockScannerLink(chainName: string, address: string): string {
+    console.log(chainName)
+    if (blockScannerAddressLinks.has(chainName)) {
+        return blockScannerAddressLinks.get(chainName) + address;
+    }
+
+    return "";
 }
 
 export default async function handler(
