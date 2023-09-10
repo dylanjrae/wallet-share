@@ -96,28 +96,28 @@ const ImageForm: React.FC = () => {
         </select>
 
       <button 
-        className="border border-2 border-emerald-950 bg-emerald-700 text-xl text-white px-8 py-2 my-6 rounded-md hover:bg-emerald-800"
+        className="border border-2 border-emerald-950 bg-emerald-700 text-xl text-white px-8 py-2 mb-8 rounded-md hover:bg-emerald-800"
         onClick={handleGenerateClick}>
           Generate
       </button>
+
+      <div style={{ display: 'flex', flexDirection: 'column', height: '200px' }}>
+        {isLoading && <LoadingAnimation />}
+        <object
+          key={objectKey}
+          data={imageUrl}
+          type="image/svg+xml"
+          onLoad={() => {
+            setIsLoading(false);          }}
+          style={{ flex: 1 }}        />
+      </div>
+
       <p 
         className = "cursor-pointer tracking-widest text-white text-xs border border-gray-500 bg-slate-900 hover:bg-violet-950 px-4 py-2 rounded w-[50rem] ellipses truncate"
         onClick={handleUrlClick}
       >
         {imageUrl}
       </p>
-
-      {isLoading && <LoadingAnimation />}
-      
-      <object
-        key={objectKey}
-        data={imageUrl} 
-        type="image/svg+xml"
-        onLoad={() => {
-          setIsLoading(false);
-        }}
-
-      />
     </div>
   );
 };

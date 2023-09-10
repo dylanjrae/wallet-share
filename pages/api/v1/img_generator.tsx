@@ -166,6 +166,7 @@ const ChainCounter = ({userConfig, covalentData, logos}: CardContentProps) => {
     for (let [key, value] of logos) {
         const row = Math.floor(i / 3);
         const col = i % 3;
+        // const x = maxX - (col * 20);
         const blockScannerLink = generateBlockScannerLink(key, covalentData.address)
         chainLogos.push(
             <Translate key={"translate-"+key} x={col * 20} y={row * 20}>
@@ -178,10 +179,10 @@ const ChainCounter = ({userConfig, covalentData, logos}: CardContentProps) => {
     
     return (
         <g>
-            <text fontSize="16">
+            <text fontSize="16" textAnchor='end'>
                 {chainCount} {chainCount === 1 ? 'Chain' : 'Chains'}
             </text>
-            <Translate x={15} y= {20}>
+            <Translate x={-58} y= {22}>
                 {chainLogos}
             </Translate>
         </g>
@@ -283,7 +284,7 @@ const NetWorthDisplay = ({userConfig, covalentData}: {userConfig: UserConfig, co
     const netWorth: string = formatAsCurrency(calculateWalletNetWorth(covalentData.balances), userConfig.currency);
 
     return (
-        <text fontSize="16">
+        <text fontSize="18" textAnchor="end">
             {netWorth}
         </text>
     );
@@ -302,13 +303,13 @@ const CardContent = ({userConfig, covalentData, logos}: CardContentProps) => {
     return (
         <g dominantBaseline="text-before-edge" textAnchor="start" fill={userConfig.fillColor} fontFamily={userConfig.fontFamily}>
             <Address userConfig={userConfig} covalentData={covalentData} />
-            <Translate x={295} y={0}>
+            <Translate x={380} y={0}>
                 <ChainCounter userConfig={userConfig} covalentData={covalentData} logos={logos}/>
             </Translate>
-            <Translate x={0} y={55}>
+            <Translate x={0} y={100}>
                 <ActivitySummary userConfig={userConfig} covalentData={covalentData} />
             </Translate>
-            <Translate x={160} y={55}>
+            <Translate x={380} y={125}>
                 <NetWorthDisplay userConfig={userConfig} covalentData={covalentData} />
             </Translate>
             
@@ -333,7 +334,7 @@ const Background = () => {
 };
 
 function buildSVG(userConfig: UserConfig, covalentData: CovalentBatchResponseData, logos: Map<string, string>): string {
-    const height: number = 150;
+    const height: number = 200;
     const width: number = 450;
 
     const svg: string = renderToStaticMarkup(
