@@ -160,21 +160,42 @@ const ChainLogo = ({img, size, link}: {img: string, size: number, link: string})
 const ChainCounter = ({userConfig, covalentData, logos}: CardContentProps) => {
     const chainLogos: JSX.Element[] = [];
     const chainCount: number = covalentData.chainActivity.length;    
-    const logoCount: number = Math.min(9, logos.size);
+    const logoCount: number = logos.size;
     var i: number = 0;
 
-    for (let [key, value] of logos) {
-        const row = Math.floor(i / 3);
-        const col = i % 3;
-        // const x = maxX - (col * 20);
-        const blockScannerLink = generateBlockScannerLink(key, covalentData.address)
-        chainLogos.push(
-            <Translate key={"translate-"+key} x={col * 20} y={row * 20}>
-                <ChainLogo key={"chainlogo-"+key} img={value} size={15} link={blockScannerLink}/>
-            </Translate>
-        );
-        i++;
-        if (i >= 9) break;
+    if (logoCount == 1) {
+        for (let [key, value] of logos) {
+            const blockScannerLink = generateBlockScannerLink(key, covalentData.address)
+            chainLogos.push(
+                <Translate key={"translate-"+key} x={20} y={0}>
+                    <ChainLogo key={"chainlogo-"+key} img={value} size={35} link={blockScannerLink}/>
+                </Translate>
+            );
+        }
+    } else if (logoCount == 2) {
+        for (let [key, value] of logos) {
+            const col = i % 3;
+            const blockScannerLink = generateBlockScannerLink(key, covalentData.address)
+            chainLogos.push(
+                <Translate key={"translate-"+key} x={col * 30} y={0}>
+                    <ChainLogo key={"chainlogo-"+key} img={value} size={25} link={blockScannerLink}/>
+                </Translate>
+            );
+            i++;
+        }
+    } else {
+        for (let [key, value] of logos) {
+            const row = Math.floor(i / 3);
+            const col = i % 3;
+            const blockScannerLink = generateBlockScannerLink(key, covalentData.address)
+            chainLogos.push(
+                <Translate key={"translate-"+key} x={col * 20} y={row * 20}>
+                    <ChainLogo key={"chainlogo-"+key} img={value} size={15} link={blockScannerLink}/>
+                </Translate>
+            );
+            i++;
+            if (i >= 9) break;
+        }
     }
     
     return (
