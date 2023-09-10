@@ -56,8 +56,9 @@ async function fetchCovalentDataAllChains(userConfig: UserConfig, covaClient: Cl
     const balancesRes: Map<Chains, BalanceItem[]> = new Map<Chains, BalanceItem[]>();
     const transactionSummaryRes: Map<Chains, TransactionsSummary[]> = new Map<Chains, TransactionsSummary[]>();
     const resolvedAddress: string = addressActivityResp.data.address;
-    for (const chain of chainList) {
-        const[transactionSummaryResp, balancesResp] = await Promise.all([
+
+    const promises = chainList.map(async (chain) => {
+        const [transactionSummaryResp, balancesResp] = await Promise.all([
             covaClient.TransactionService.getTransactionSummary(chain, resolvedAddress),
             covaClient.BalanceService.getTokenBalancesForWalletAddress(chain, resolvedAddress, { quoteCurrency: userConfig.currency })
         ]);
@@ -66,7 +67,9 @@ async function fetchCovalentDataAllChains(userConfig: UserConfig, covaClient: Cl
         if (transactionSummaryResp.data != null) {
             transactionSummaryRes.set(chain, transactionSummaryResp.data.items);
         }
-    }
+    });
+
+    await Promise.all(promises);
 
     const res:CovalentBatchResponseData = {
         chainItems: chainsResp.data.items,
