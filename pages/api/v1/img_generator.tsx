@@ -19,7 +19,7 @@ export class UserConfig {
   fillColor: string;
   
   constructor(req: NextApiRequest) {
-    this.chain = req.query.chain as Chains ? req.query.chain as Chains : 'eth-mainnet';
+    this.chain = req.query.chain as Chains ? req.query.chain as Chains : 'all-chains';
     this.address = req.query.address as string ? req.query.address as string : 'demo.eth';
     this.currency = req.query.currency as Quotes ? req.query.currency as Quotes : 'USD';
     this.fontFamily = req.query.fontFamily as string ? req.query.fontFamily as string : 'monospace';
@@ -63,7 +63,10 @@ async function fetchCovalentDataAllChains(userConfig: UserConfig, covaClient: Cl
             covaClient.BalanceService.getTokenBalancesForWalletAddress(chain, resolvedAddress, { quoteCurrency: userConfig.currency })
         ]);
 
-        balancesRes.set(chain, balancesResp.data.items);
+        if(balancesResp.data != null) {
+            balancesRes.set(chain, balancesResp.data.items);
+        }
+
         if (transactionSummaryResp.data != null) {
             transactionSummaryRes.set(chain, transactionSummaryResp.data.items);
         }
