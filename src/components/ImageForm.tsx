@@ -6,17 +6,18 @@ import LoadingAnimation from './LoadingAnimation';
 
 const ImageForm: React.FC = () => {
   const [addressInput, setAddressInput] = useState('demo.eth');
-  const [chainInput, setChainInput] = useState('eth-mainnet');
+  const [chainInput, setChainInput] = useState('all-chains');
   const [currencyInput, setCurrencyInput] = useState('USD');
+  const [fontFamilyInput, setFontFamilyInput] = useState('monospace');
   const [cardStyle, setCardStyle] = useState('default');
-  const [imageUrl, setImageUrl] = useState(`${API_URL}/api/v1/img_generator/?address=${addressInput}&chain=${chainInput}&currency=${currencyInput}&style=${cardStyle}`);
+  const [imageUrl, setImageUrl] = useState(`${API_URL}/api/v1/img_generator/?address=${addressInput}&chain=${chainInput}&currency=${currencyInput}&style=${cardStyle}&fontFamily=${fontFamilyInput}`);
   const [isLoading, setIsLoading] = useState(true);
   const [objectKey, setObjectKey] = useState(Math.random());
 
   const handleGenerateClick = () => {
     setIsLoading(true);
     const baseUrl = `${API_URL}/api/v1/img_generator/`;
-    const queryParams = `?address=${addressInput}&chain=${chainInput}&currency=${currencyInput}&style=${cardStyle}`;
+    const queryParams = `?address=${addressInput}&chain=${chainInput}&currency=${currencyInput}&style=${cardStyle}&fontFamily=${fontFamilyInput}`;
     const generatedUrl = baseUrl + queryParams;
     setImageUrl(generatedUrl);
     setObjectKey(Math.random());
@@ -40,6 +41,7 @@ const ImageForm: React.FC = () => {
           onChange={(e) => setChainInput(e.target.value)}
           className=" w-4/12 text-center text-black rounded cursor-pointer"
         >
+          <option value="all-chains">All Chains</option>
           <option value="eth-mainnet">Ethereum Mainnet</option>
           <option value="matic-mainnet">Polygon Mainnet</option>
           <option value="avalanche-mainnet">Avalanche C-Chain Mainnet</option>
@@ -71,6 +73,19 @@ const ImageForm: React.FC = () => {
           <option value="ETH">ETH (Ξ)</option>
           <option value="TRY">TRY (₺)</option>
           <option value="RUB">RUB (₽)</option>
+        </select>
+        <select
+          value={fontFamilyInput}
+          onChange={(e) => setFontFamilyInput(e.target.value)}
+          className="w-2/12 text-center text-black rounded cursor-pointer"
+        >
+          <option value="monospace">Monospace</option>
+          <option value="cursive">Cursive</option>
+          <option value="fantasy">Fantasy</option>
+          <option value="Arial">Arial</option>
+          <option value="Time New Roman">Time New Roman</option>
+          <option value="Garamond">Garamond</option>
+   
         </select>
         <select
           value={cardStyle}

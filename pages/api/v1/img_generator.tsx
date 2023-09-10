@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ReactNode } from 'react';
-import { Client } from '@covalenthq/client-sdk';
+import { BalanceItem, ChainActivityEvent, ChainItem, Client, TransactionsSummary } from '@covalenthq/client-sdk';
 import { Chains, Quotes } from '@covalenthq/client-sdk/dist/services/Client';
 
 
@@ -12,7 +12,7 @@ const cov_key: string = process.env.COVALENT_KEY;
 const covaClient: Client = new Client(cov_key);
 
 export class UserConfig {
-  chain: Chains;
+  chain: Chains | 'all-chains';
   address: string;
   currency: Quotes;
   fontFamily: string;
@@ -27,73 +27,61 @@ export class UserConfig {
   }
 }
 
-type Balance = {
-  contract_decimals: number;
-  contract_name: string;
-  contract_ticker_symbol: string;
-  contract_address: string;
-  logo_url: string;
-  type: string;
-  balance: bigint | null;
-  quote_rate: number;
-  quote: number;
-};
-
-type TransactionSummary = {
-  total_count: number;
-  earliest_transaction: {
-    block_signed_at: Date;
-    tx_hash: string;
-    tx_detail_link: string;
-  }
-  latest_transaction: {
-    block_signed_at: Date;
-    tx_hash: string;
-    tx_detail_link: string;
-  };
-}
-
 type ChainInfo = {
   name: string;
   logo_url: string;
   label: string;
 };
 
-type ChainActivityEvent = ChainInfo & {
-  last_seen_at: Date;
-};
-
 export type CovalentBatchResponseData = {
   address: string;
-  chainInfos: ChainInfo[];
-  chainActivity: ChainActivityEvent[];
-  balances: Balance[];
-  transactionSummary: TransactionSummary[];
+  chainItems: ChainItem[];
+  chainActivity: ChainActivityEvent[] | [];
+  balances: Map<Chains, BalanceItem[]>;
+  transactionSummary: Map<Chains, TransactionsSummary[]>;
 };
 
-async function fetchCovalentData(userConfig: UserConfig, covaClient: Client): Promise<CovalentBatchResponseData> {
-    const [chainsResp, addressActivityResp, balancesResp, transactionSummaryResp] = await Promise.all([
-      covaClient.BaseService.getAllChains(),
-      covaClient.BaseService.getAddressActivity(userConfig.address),
-      covaClient.BalanceService.getTokenBalancesForWalletAddress(userConfig.chain, userConfig.address, { quoteCurrency: userConfig.currency }),
-      covaClient.TransactionService.getTransactionSummary(userConfig.chain, userConfig.address),
+async function fetchCovalentDataAllChains(userConfig: UserConfig, covaClient: Client): Promise<CovalentBatchResponseData> {
+    const [chainsResp, addressActivityResp] = await Promise.all([
+        covaClient.BaseService.getAllChains(),
+        covaClient.BaseService.getAddressActivity(userConfig.address)
     ]);
+    
+    const chainList: Chains[] = [];
+    for (const activityItem of addressActivityResp.data.items) {
+        const chain: Chains = activityItem.name as Chains;
+        chainList.push(chain);
+    }
+
+    const balancesRes: Map<Chains, BalanceItem[]> = new Map<Chains, BalanceItem[]>();
+    const transactionSummaryRes: Map<Chains, TransactionsSummary[]> = new Map<Chains, TransactionsSummary[]>();
+    const resolvedAddress: string = addressActivityResp.data.address;
+    for (const chain of chainList) {
+        const[transactionSummaryResp, balancesResp] = await Promise.all([
+            covaClient.TransactionService.getTransactionSummary(chain, resolvedAddress),
+            covaClient.BalanceService.getTokenBalancesForWalletAddress(chain, resolvedAddress, { quoteCurrency: userConfig.currency })
+        ]);
+
+        balancesRes.set(chain, balancesResp.data.items);
+        if (transactionSummaryResp.data != null) {
+            transactionSummaryRes.set(chain, transactionSummaryResp.data.items);
+        }
+    }
 
     const res:CovalentBatchResponseData = {
-        chainInfos: chainsResp.data.items,
+        chainItems: chainsResp.data.items,
         chainActivity: addressActivityResp.data.items,
-        balances: balancesResp.data.items,
-        address: balancesResp.data.address,
-        transactionSummary: transactionSummaryResp.data.items,
+        balances: balancesRes,
+        address: resolvedAddress,
+        transactionSummary: transactionSummaryRes,
     };
 
     return res;
 }
-
   
-function findChainByChainName(chainName: string, chainInfos: ChainInfo[]): ChainInfo {
-  const foundChain: ChainInfo | undefined = chainInfos.find(chain => chain.name === chainName);
-  return foundChain ? foundChain : chainInfos[0];
+function findChainByChainName(chainName: string, chainItems: ChainItem[]): ChainItem {
+  const foundChain: ChainItem | undefined = chainItems.find(chain => chain.name === chainName);
+  return foundChain ? foundChain : chainItems[0];
 }
 
 
@@ -130,16 +118,27 @@ const SVGWrapper = ({ height, width, children }: SVGProps) => {
 
 const Address = ({userConfig, covalentData}: {userConfig: UserConfig, covalentData: CovalentBatchResponseData}) => {
     const isNonstandardAddress: boolean = covalentData.address != userConfig.address.toLowerCase();
+    const ellipsis = '...';
+    const maxChars = 30;
+
+    const truncateMiddle = (input: string, chars: number, ellipsis: string) => {
+        return input.length > chars ? 
+            input.substring(0, chars/2) + ellipsis + input.substring(input.length-chars/2) : 
+            input;
+    }
+
+    const displayAddress = truncateMiddle(userConfig.address, maxChars, ellipsis);
+    const displayCovalentAddress = isNonstandardAddress ? truncateMiddle(covalentData.address, maxChars, ellipsis) : '';
 
     return (
         <g>
-            <text font-size="{userSuppliedAddress.length >= 42 ? '12' : '19'}" >
-                {userConfig.address}
+            <text fontSize="{userSuppliedAddress.length >= 42 ? '14' : '19'}" >
+                {displayAddress}
             </text>
 
             <Translate x={5.25} y={18}>
-                <text font-size="10" >
-                    {isNonstandardAddress ? covalentData.address : ''}
+                <text fontSize="10" >
+                    {displayCovalentAddress}
                 </text>
             </Translate>
         </g>
@@ -157,8 +156,6 @@ const ChainLogo = ({img, size, link}: {img: string, size: number, link: string})
         )
       );
 };
-
-
 
 const ChainCounter = ({userConfig, covalentData, logos}: CardContentProps) => {
     const chainLogos: JSX.Element[] = [];
@@ -181,7 +178,7 @@ const ChainCounter = ({userConfig, covalentData, logos}: CardContentProps) => {
     
     return (
         <g>
-            <text font-size="16">
+            <text fontSize="16">
                 {chainCount} {chainCount === 1 ? 'Chain' : 'Chains'}
             </text>
             <Translate x={15} y= {20}>
@@ -191,27 +188,104 @@ const ChainCounter = ({userConfig, covalentData, logos}: CardContentProps) => {
     );
 };
 
+function calculateTotalTxCount(covalentData: CovalentBatchResponseData): number {
+    let txCount: number = 0;
+    for (let [key, value] of covalentData.transactionSummary) {
+        txCount += value[0].total_count;
+    }
+    return txCount;
+}
+
+function calculateEarliestDate(covalentData: CovalentBatchResponseData): string {
+    let earliestDate: Date | undefined = undefined;
+    for (let [key, value] of covalentData.transactionSummary) {
+        const chainEarliestDate: Date = new Date(value[0].earliest_transaction.block_signed_at);
+        if (earliestDate == undefined || chainEarliestDate < earliestDate) {
+            earliestDate = chainEarliestDate;
+
+        }
+    }
+
+    let earliestDateStr: string = '';
+    if (earliestDate != undefined) {
+        earliestDateStr = earliestDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) 
+    }
+
+    return earliestDateStr;
+}
+
+function calculateLatestDate(covalentData: CovalentBatchResponseData): string {
+    let latestDate: Date | undefined = undefined;
+    for (let [key, value] of covalentData.transactionSummary) {
+        const chainLatestDate: Date = new Date(value[0].latest_transaction.block_signed_at);
+        if (latestDate == undefined || chainLatestDate > latestDate) {
+            latestDate = chainLatestDate;
+        }
+    }
+
+    let latestDateStr: string = '';
+    if (latestDate != undefined) {
+        latestDateStr = latestDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) 
+    }
+
+    return latestDateStr;
+}
+
 const ActivitySummary = ({userConfig, covalentData}: {userConfig: UserConfig, covalentData: CovalentBatchResponseData}) => {
-    const txCount: number = covalentData.transactionSummary != undefined ? covalentData.transactionSummary[0].total_count : 0;
-    const firstActivityDate: Date | undefined = covalentData.transactionSummary != undefined ? new Date(covalentData.transactionSummary[0].earliest_transaction.block_signed_at) : undefined;
-    const firstActivityStr: string = firstActivityDate != undefined ? firstActivityDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
-    const lastActivityDate: Date | undefined = covalentData.transactionSummary != undefined ? new Date(covalentData.transactionSummary[0].latest_transaction.block_signed_at) : undefined;
-    const lastActivityStr: string = lastActivityDate != undefined ? lastActivityDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+    const txCount: number = calculateTotalTxCount(covalentData);
+    const firstActivityStr: string = calculateEarliestDate(covalentData);;
+    const lastActivityStr: string = calculateLatestDate(covalentData);
 
     return (
-        <svg x="1%" y="24%">
-        <text x="0%" y="0%" font-size="10">
-          {txCount} {txCount === 1 ? 'Transaction' : 'Transactions'}
-        </text>
+        <g>
+            <Translate x={0} y={0}>
+                <text fontSize="16">
+                    {txCount}
+                </text>
+            </Translate>
+        
+            <Translate x={0} y={18}>
+                <text fontSize="12">
+                    {txCount === 1 ? 'Transaction' : 'Transactions'}
+                </text>
+            </Translate>
 
-        <text x="0%" y="3.5%" font-size="10">
-        {lastActivityStr ? `Last activity: ${lastActivityStr}` : ''}
-        </text>
+            <Translate x={0} y={34}>
+                <text fontSize="9">
+                    {lastActivityStr ? `Last activity: ${lastActivityStr}` : ''}
+                </text>
+            </Translate>
+      </g>
+    );
+};
 
-        <text x="0%" y="7%" font-size="10">
-          {firstActivityStr ? `First activity: ${firstActivityStr}` : ''}
+function calculateWalletNetWorth(balances: Map<Chains, BalanceItem[]>): number {
+    let netWorth: number = 0;
+    for (let [key, value] of balances) {
+        value.forEach(balance => {
+            netWorth += balance.quote;
+          });
+    }
+    
+    return netWorth;
+};
+
+function formatAsCurrency(amount: number, currencyCode: string ): string {
+    const formattedNumber = new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currencyCode,
+    }).format(amount);
+  
+    return formattedNumber;
+  }
+
+const NetWorthDisplay = ({userConfig, covalentData}: {userConfig: UserConfig, covalentData: CovalentBatchResponseData}) => {
+    const netWorth: string = formatAsCurrency(calculateWalletNetWorth(covalentData.balances), userConfig.currency);
+
+    return (
+        <text fontSize="16">
+            {netWorth}
         </text>
-      </svg>
     );
 };
 
@@ -222,21 +296,21 @@ type CardContentProps = {
 };
 
 const CardContent = ({userConfig, covalentData, logos}: CardContentProps) => {
-    const chainInfo: ChainInfo = findChainByChainName(userConfig.chain, covalentData.chainInfos);
-    const chainLabel: string = chainInfo.label;
+    const chainItem: ChainInfo = findChainByChainName(userConfig.chain, covalentData.chainItems);
+    const chainLabel: string = chainItem.label;
 
     return (
-        <g dominant-baseline="text-before-edge" text-anchor="start" fill={userConfig.fillColor} font-family={userConfig.fontFamily}>
+        <g dominantBaseline="text-before-edge" textAnchor="start" fill={userConfig.fillColor} fontFamily={userConfig.fontFamily}>
             <Address userConfig={userConfig} covalentData={covalentData} />
             <Translate x={295} y={0}>
                 <ChainCounter userConfig={userConfig} covalentData={covalentData} logos={logos}/>
             </Translate>
-            <Translate x={0} y={0}>
+            <Translate x={0} y={55}>
                 <ActivitySummary userConfig={userConfig} covalentData={covalentData} />
             </Translate>
-            {/* <Translate x={0} y={0}> */}
-                {/* <NetWorthDisplay userConfig={userConfig} covalentData={covalentData} /> */}
-            {/* </Translate> */}
+            <Translate x={160} y={55}>
+                <NetWorthDisplay userConfig={userConfig} covalentData={covalentData} />
+            </Translate>
             
         </g>
     );
@@ -311,7 +385,6 @@ const blockScannerAddressLinks: Map<string, string> = new Map<string, string>([
 ]);
 
 function generateBlockScannerLink(chainName: string, address: string): string {
-    console.log(chainName)
     if (blockScannerAddressLinks.has(chainName)) {
         return blockScannerAddressLinks.get(chainName) + address;
     }
@@ -324,10 +397,8 @@ export default async function handler(
     res: NextApiResponse<string>
   ) {
       const userConfig: UserConfig = new UserConfig(req);
-      const covalentData: CovalentBatchResponseData = await fetchCovalentData(userConfig, covaClient);
+      const covalentData: CovalentBatchResponseData = await fetchCovalentDataAllChains(userConfig, covaClient);
       const logos: Map<string, string> = await fetchChainLogos(covalentData);
-
-      //preprocess logos or other async info here with await and pass in separately
       
       const svg: string = buildSVG(userConfig, covalentData, logos);
   
