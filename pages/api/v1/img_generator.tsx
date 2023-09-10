@@ -36,7 +36,7 @@ type ChainInfo = {
 export type CovalentBatchResponseData = {
   address: string;
   chainItems: ChainItem[];
-  chainActivity: ChainActivityEvent[] | [];
+  chainActivity: ChainActivityEvent[];
   balances: Map<Chains, BalanceItem[]>;
   transactionSummary: Map<Chains, TransactionsSummary[]>;
 };
@@ -165,7 +165,7 @@ const ChainCounter = ({userConfig, covalentData, logos}: CardContentProps) => {
 
     if (logoCount == 1) {
         for (let [key, value] of logos) {
-            const blockScannerLink = generateBlockScannerLink(key, covalentData.address)
+            const blockScannerLink = generateBlockScannerAddressLink(key, covalentData.address)
             chainLogos.push(
                 <Translate key={"translate-"+key} x={20} y={0}>
                     <ChainLogo key={"chainlogo-"+key} img={value} size={35} link={blockScannerLink}/>
@@ -175,7 +175,7 @@ const ChainCounter = ({userConfig, covalentData, logos}: CardContentProps) => {
     } else if (logoCount == 2) {
         for (let [key, value] of logos) {
             const col = i % 3;
-            const blockScannerLink = generateBlockScannerLink(key, covalentData.address)
+            const blockScannerLink = generateBlockScannerAddressLink(key, covalentData.address)
             chainLogos.push(
                 <Translate key={"translate-"+key} x={col * 30} y={0}>
                     <ChainLogo key={"chainlogo-"+key} img={value} size={25} link={blockScannerLink}/>
@@ -187,7 +187,7 @@ const ChainCounter = ({userConfig, covalentData, logos}: CardContentProps) => {
         for (let [key, value] of logos) {
             const row = Math.floor(i / 3);
             const col = i % 3;
-            const blockScannerLink = generateBlockScannerLink(key, covalentData.address)
+            const blockScannerLink = generateBlockScannerAddressLink(key, covalentData.address)
             chainLogos.push(
                 <Translate key={"translate-"+key} x={col * 20} y={row * 20}>
                     <ChainLogo key={"chainlogo-"+key} img={value} size={15} link={blockScannerLink}/>
@@ -197,7 +197,7 @@ const ChainCounter = ({userConfig, covalentData, logos}: CardContentProps) => {
             if (i >= 9) break;
         }
     }
-    
+
     return (
         <g>
             <text fontSize="16" textAnchor='end'>
@@ -218,30 +218,16 @@ function calculateTotalTxCount(covalentData: CovalentBatchResponseData): number 
     return txCount;
 }
 
-function calculateEarliestDate(covalentData: CovalentBatchResponseData): string {
-    let earliestDate: Date | undefined = undefined;
-    for (let [key, value] of covalentData.transactionSummary) {
-        const chainEarliestDate: Date = new Date(value[0].earliest_transaction.block_signed_at);
-        if (earliestDate == undefined || chainEarliestDate < earliestDate) {
-            earliestDate = chainEarliestDate;
-
-        }
-    }
-
-    let earliestDateStr: string = '';
-    if (earliestDate != undefined) {
-        earliestDateStr = earliestDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) 
-    }
-
-    return earliestDateStr;
-}
-
-function calculateLatestDate(covalentData: CovalentBatchResponseData): string {
+function fetchLatestTxDetails(covalentData: CovalentBatchResponseData): [Chains | undefined, string, string] {
     let latestDate: Date | undefined = undefined;
+    let chain: Chains | undefined = undefined;
+    let txHash: string = '';
     for (let [key, value] of covalentData.transactionSummary) {
         const chainLatestDate: Date = new Date(value[0].latest_transaction.block_signed_at);
         if (latestDate == undefined || chainLatestDate > latestDate) {
             latestDate = chainLatestDate;
+            chain = key;
+            txHash = value[0].latest_transaction.tx_hash;
         }
     }
 
@@ -250,13 +236,17 @@ function calculateLatestDate(covalentData: CovalentBatchResponseData): string {
         latestDateStr = latestDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) 
     }
 
-    return latestDateStr;
+    return [chain, latestDateStr, txHash];
 }
 
-const ActivitySummary = ({userConfig, covalentData}: {userConfig: UserConfig, covalentData: CovalentBatchResponseData}) => {
+const ActivitySummary = ({userConfig, covalentData, logos}: CardContentProps) => {
     const txCount: number = calculateTotalTxCount(covalentData);
-    const firstActivityStr: string = calculateEarliestDate(covalentData);;
-    const lastActivityStr: string = calculateLatestDate(covalentData);
+    const [chain, lastActivityStr, txHash] = fetchLatestTxDetails(covalentData);
+    const blockScannerTxLink = generateBlockScannerTxLink(chain, txHash);
+    let img: string = '';
+    if (chain != undefined && logos.has(chain)){
+        img = logos.get(chain) as string;
+    }
 
     return (
         <g>
@@ -276,6 +266,9 @@ const ActivitySummary = ({userConfig, covalentData}: {userConfig: UserConfig, co
                 <text fontSize="9">
                     {lastActivityStr ? `Last activity: ${lastActivityStr}` : ''}
                 </text>
+                <Translate x={150} y={-1}>
+                    <ChainLogo img={img} size={12} link={blockScannerTxLink}/>
+                </Translate>
             </Translate>
       </g>
     );
@@ -314,7 +307,7 @@ const NetWorthDisplay = ({userConfig, covalentData}: {userConfig: UserConfig, co
 type CardContentProps = {
     userConfig: UserConfig;
     covalentData: CovalentBatchResponseData;
-    logos: Map<string, string>;
+    logos: Map<Chains, string>;
 };
 
 const CardContent = ({userConfig, covalentData, logos}: CardContentProps) => {
@@ -328,7 +321,7 @@ const CardContent = ({userConfig, covalentData, logos}: CardContentProps) => {
                 <ChainCounter userConfig={userConfig} covalentData={covalentData} logos={logos}/>
             </Translate>
             <Translate x={0} y={100}>
-                <ActivitySummary userConfig={userConfig} covalentData={covalentData} />
+                <ActivitySummary userConfig={userConfig} covalentData={covalentData} logos={logos}/>
             </Translate>
             <Translate x={380} y={125}>
                 <NetWorthDisplay userConfig={userConfig} covalentData={covalentData} />
@@ -354,7 +347,7 @@ const Background = () => {
     );
 };
 
-function buildSVG(userConfig: UserConfig, covalentData: CovalentBatchResponseData, logos: Map<string, string>): string {
+function buildSVG(userConfig: UserConfig, covalentData: CovalentBatchResponseData, logos: Map<Chains, string>): string {
     const height: number = 200;
     const width: number = 450;
 
@@ -379,12 +372,12 @@ async function fetchBase64Image(url: string): Promise<string> {
     return `data:image/svg+xml;base64,${base64Image}`;
   }
 
-async function fetchChainLogos(covalentData: CovalentBatchResponseData): Promise<Map<string, string>> {
-    const logos: Map<string, string> = new Map<string, string>();
+async function fetchChainLogos(covalentData: CovalentBatchResponseData): Promise<Map<Chains, string>> {
+    const logos: Map<Chains, string> = new Map<Chains, string>();
 
     for (const event of covalentData.chainActivity) {
         const base64Image = await fetchBase64Image(event.logo_url);
-        logos.set(event.name, base64Image);
+        logos.set(event.name as Chains, base64Image);
     }
 
     return logos;
@@ -406,9 +399,33 @@ const blockScannerAddressLinks: Map<string, string> = new Map<string, string>([
     ["mantle-mainnet", "https://mantlescan.info/address/"],
 ]);
 
-function generateBlockScannerLink(chainName: string, address: string): string {
+function generateBlockScannerAddressLink(chainName: string, address: string): string {
     if (blockScannerAddressLinks.has(chainName)) {
         return blockScannerAddressLinks.get(chainName) + address;
+    }
+
+    return "";
+}
+
+const blockScannerTxLinks: Map<Chains, string> = new Map<Chains, string>([
+    ["eth-mainnet", "https://etherscan.io/tx/"],
+    ["matic-mainnet", "https://polygonscan.com/tx/"],
+    ["bsc-mainnet", "https://bscscan.com/tx/"],
+    ["avalanche-mainnet", "https://avascan.info/blockchain/c/tx/"],
+    ["fantom-mainnet", "https://ftmscan.com/tx/"],
+    ["zora-mainnet", "https://explorer.zora.energy/tx/"],
+    ["arbitrum-nova-mainnet", "https://nova.arbiscan.io/tx/"],
+    ["arbitrum-mainnet", "https://arbiscan.io/tx/"],
+    ["moonbeam-moonriver", "https://moonscan.io/tx/"],
+    ["optimism-mainnet", "https://optimistic.etherscan.io/tx/"],
+    ["linea-mainnet", "https://lineascan.build/tx/"],
+    ["base-mainnet", "https://basescan.org/tx/"],
+    ["mantle-mainnet", "https://mantlescan.info/tx/"],
+]);
+
+function generateBlockScannerTxLink(chain: Chains | undefined, txHash: string): string {
+    if (chain != undefined && blockScannerTxLinks.has(chain)) {
+        return blockScannerTxLinks.get(chain) + txHash;
     }
 
     return "";
@@ -420,7 +437,7 @@ export default async function handler(
   ) {
       const userConfig: UserConfig = new UserConfig(req);
       const covalentData: CovalentBatchResponseData = await fetchCovalentDataAllChains(userConfig, covaClient);
-      const logos: Map<string, string> = await fetchChainLogos(covalentData);
+      const logos: Map<Chains, string> = await fetchChainLogos(covalentData);
       
       const svg: string = buildSVG(userConfig, covalentData, logos);
   
