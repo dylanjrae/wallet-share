@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ReactNode } from 'react';
-import { BalanceItem, ChainActivityEvent, ChainItem, Client, TransactionsSummary } from '@covalenthq/client-sdk';
+import { BalanceItem, ChainItem, Client, TransactionsSummary } from '@covalenthq/client-sdk';
 import { Chains, Quotes } from '@covalenthq/client-sdk/dist/services/Client';
 
 
@@ -27,35 +27,39 @@ export class UserConfig {
   }
 }
 
-type ChainInfo = {
-  name: string;
-  logo_url: string;
-  label: string;
-};
-
 export type CovalentBatchResponseData = {
   address: string;
-  chainItems: ChainItem[];
-  chainActivity: ChainActivityEvent[];
+  userChains: Map<Chains, ChainItem>
   balances: Map<Chains, BalanceItem[]>;
   transactionSummary: Map<Chains, TransactionsSummary[]>;
 };
 
-async function fetchCovalentDataAllChains(userConfig: UserConfig, covaClient: Client): Promise<CovalentBatchResponseData> {
-    const [chainsResp, addressActivityResp] = await Promise.all([
-        covaClient.BaseService.getAllChains(),
-        covaClient.BaseService.getAddressActivity(userConfig.address)
-    ]);
+async function getUserChains(userConfig: UserConfig, covaClient: Client): Promise<[Map<Chains, ChainItem>, string]> {
+    const userChains: Map<Chains, ChainItem> = new Map<Chains, ChainItem>();
+    let resolvedAddress: string;
     
-    const chainList: Chains[] = [];
-    for (const activityItem of addressActivityResp.data.items) {
-        const chain: Chains = activityItem.name as Chains;
-        chainList.push(chain);
+    if (userConfig.chain === 'all-chains') {
+        const addressActivityResp = await covaClient.BaseService.getAddressActivity(userConfig.address);
+        resolvedAddress = addressActivityResp.data.address;
+        for (const activityItem of addressActivityResp.data.items) {
+            const chain: Chains = activityItem.name as Chains;
+            userChains.set(chain, activityItem);
+        }
+    } else {
+        const chainsResp = (await covaClient.BaseService.getAllChains()).data.items;
+        resolvedAddress = userConfig.address;
+        userChains.set(userConfig.chain, findChainByChainName(userConfig.chain, chainsResp));
     }
+
+    return [userChains, resolvedAddress];
+}
+
+async function fetchCovalentData(userConfig: UserConfig, covaClient: Client): Promise<CovalentBatchResponseData> {
+    const [userChains, resolvedAddress] = await getUserChains(userConfig, covaClient);
+    const chainList: Chains[] = Array.from(userChains.keys());
 
     const balancesRes: Map<Chains, BalanceItem[]> = new Map<Chains, BalanceItem[]>();
     const transactionSummaryRes: Map<Chains, TransactionsSummary[]> = new Map<Chains, TransactionsSummary[]>();
-    const resolvedAddress: string = addressActivityResp.data.address;
 
     const promises = chainList.map(async (chain) => {
         const [transactionSummaryResp, balancesResp] = await Promise.all([
@@ -75,8 +79,7 @@ async function fetchCovalentDataAllChains(userConfig: UserConfig, covaClient: Cl
     await Promise.all(promises);
 
     const res:CovalentBatchResponseData = {
-        chainItems: chainsResp.data.items,
-        chainActivity: addressActivityResp.data.items,
+        userChains: userChains,
         balances: balancesRes,
         address: resolvedAddress,
         transactionSummary: transactionSummaryRes,
@@ -138,7 +141,7 @@ const Address = ({userConfig, covalentData}: {userConfig: UserConfig, covalentDa
 
     return (
         <g>
-            <text fontSize={displayAddress.length >= 42 ? '14' : '15'} >
+            <text fontSize={userConfig.address.length >= 40 ? '13' : '15'} >
                 {displayAddress}
             </text>
 
@@ -165,7 +168,7 @@ const ChainLogo = ({img, size, link}: {img: string, size: number, link: string})
 
 const ChainCounter = ({userConfig, covalentData, logos}: CardContentProps) => {
     const chainLogos: JSX.Element[] = [];
-    const chainCount: number = covalentData.chainActivity.length;    
+    const chainCount: number = covalentData.userChains.size;   
     const logoCount: number = logos.size;
     var i: number = 0;
 
@@ -317,8 +320,6 @@ type CardContentProps = {
 };
 
 const CardContent = ({userConfig, covalentData, logos}: CardContentProps) => {
-    const chainItem: ChainInfo = findChainByChainName(userConfig.chain, covalentData.chainItems);
-    const chainLabel: string = chainItem.label;
 
     return (
         <g dominantBaseline="text-before-edge" textAnchor="start" fill={userConfig.fillColor} fontFamily={userConfig.fontFamily}>
@@ -381,9 +382,9 @@ async function fetchBase64Image(url: string): Promise<string> {
 async function fetchChainLogos(covalentData: CovalentBatchResponseData): Promise<Map<Chains, string>> {
     const logos: Map<Chains, string> = new Map<Chains, string>();
 
-    for (const event of covalentData.chainActivity) {
-        const base64Image = await fetchBase64Image(event.logo_url);
-        logos.set(event.name as Chains, base64Image);
+    for (let [key, value] of covalentData.userChains) {
+        const base64Image = await fetchBase64Image(value.logo_url);
+        logos.set(key, base64Image);
     }
 
     return logos;
@@ -442,7 +443,7 @@ export default async function handler(
     res: NextApiResponse<string>
   ) {
       const userConfig: UserConfig = new UserConfig(req);
-      const covalentData: CovalentBatchResponseData = await fetchCovalentDataAllChains(userConfig, covaClient);
+      const covalentData: CovalentBatchResponseData = await fetchCovalentData(userConfig, covaClient);
       const logos: Map<Chains, string> = await fetchChainLogos(covalentData);
       
       const svg: string = buildSVG(userConfig, covalentData, logos);

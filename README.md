@@ -73,6 +73,15 @@ https://walletshare.dylanrae.ca/api/v1/img_generator/?address=0xD417144312DbF504
 ```
 ![Raw Address Card](https://walletshare.dylanrae.ca/api/v1/img_generator/?address=0xD417144312DbF50465b1C641d016962017Ef6240)
 
+
+##### Chains
+The chains displayed on your card can be specified by using the query parameter `chain`. The is `all-chains`, but you can use any chain supported by [Covalent](https://www.covalenthq.com/docs/networks/) using the Chain Name to display the details for a single chain. Here is an example:    
+```
+https://walletshare.dylanrae.ca/api/v1/img_generator/?address=0x20fe51a9229eef2cf8ad9e89d91cab9312cf3b7a&chain=base-mainnet
+```
+![Single Chain Card](https://walletshare.dylanrae.ca/api/v1/img_generator/?address=0x20fe51a9229eef2cf8ad9e89d91cab9312cf3b7a&chain=base-mainnet)
+
+
 #### Fonts
 Font can be specified by using the query parameter `fontFamily`. The default font is `monospace`, but you can use any font supported by Google Fonts.
 

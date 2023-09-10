@@ -42,7 +42,7 @@ const ImageForm: React.FC = () => {
           className=" w-4/12 text-center text-black rounded cursor-pointer"
         >
           <option value="all-chains">All Chains</option>
-          {/* <option value="eth-mainnet">Ethereum Mainnet</option>
+          <option value="eth-mainnet">Ethereum Mainnet</option>
           <option value="matic-mainnet">Polygon Mainnet</option>
           <option value="avalanche-mainnet">Avalanche C-Chain Mainnet</option>
           <option value="bsc-mainnet">BNB Smart Chain</option>
@@ -55,7 +55,7 @@ const ImageForm: React.FC = () => {
           <option value="optimism-mainnet">Synthetix Optimism Mainnet</option>
           <option value="evmos-mainnet">EVMOS Mainnet</option>
           <option value="base-mainnet">Base Mainnet</option>
-          <option value="zora-mainnet">Zora Mainnet</option> */}
+          <option value="zora-mainnet">Zora Mainnet</option>
         </select>
         <select
           value={currencyInput}
