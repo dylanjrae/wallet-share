@@ -138,7 +138,7 @@ const Address = ({userConfig, covalentData}: {userConfig: UserConfig, covalentDa
 
     return (
         <g>
-            <text fontSize="{userSuppliedAddress.length >= 42 ? '14' : '19'}" >
+            <text fontSize={displayAddress.length >= 42 ? '14' : '15'} >
                 {displayAddress}
             </text>
 
