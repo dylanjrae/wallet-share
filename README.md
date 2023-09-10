@@ -35,8 +35,8 @@ If you want to display on a markdown file, you can use the following syntax:
 ```
 
 ## Endpoint
-The endpoint for this tool is:
-[https://walletshare.dylanrae.ca/api/v1/img_generator/] https://walletshare.dylanrae.ca/api/v1/img_generator/
+The endpoint for generating cards is:
+<https://walletshare.dylanrae.ca/api/v1/img_generator/>
 
 ### Options
 
@@ -92,3 +92,5 @@ pnpm dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the front-end.
+
+Feel free to open issue for any bugs or to open a PR for any features you'd like to see!
