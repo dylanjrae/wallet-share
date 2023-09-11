@@ -4,19 +4,19 @@ import { ReactNode } from 'react';
 import { BalanceItem, ChainItem, Client, TransactionsSummary } from '@covalenthq/client-sdk';
 import { Chains, Quotes } from '@covalenthq/client-sdk/dist/services/Client';
 
-
 if (!process.env.COVALENT_KEY) {
   throw new Error('Missing internally required environment variable.');
 }
 const cov_key: string = process.env.COVALENT_KEY;
 const covaClient: Client = new Client(cov_key);
 
-export class UserConfig {
+class UserConfig {
   chain: Chains | 'all-chains';
   address: string;
   currency: Quotes;
   fontFamily: string;
   fillColor: string;
+  style: CardStyle;
   
   constructor(req: NextApiRequest) {
     this.chain = req.query.chain as Chains ? req.query.chain as Chains : 'all-chains';
@@ -24,14 +24,21 @@ export class UserConfig {
     this.currency = req.query.currency as Quotes ? req.query.currency as Quotes : 'USD';
     this.fontFamily = req.query.fontFamily as string ? req.query.fontFamily as string : 'monospace';
     this.fillColor = req.query.fillColor as string ? req.query.fillColor as string : 'white';
+    this.style = req.query.style as CardStyle ? req.query.style as CardStyle : 'standard';
   }
 }
 
-export type CovalentBatchResponseData = {
+type CardStyle = 'standard' | 'tx' | 'tokens' | 'nft';
+
+type CovalentBatchResponseData = {
   address: string;
   userChains: Map<Chains, ChainItem>
   balances: Map<Chains, BalanceItem[]>;
   transactionSummary: Map<Chains, TransactionsSummary[]>;
+};
+
+type CovalentBatchResponseDataAndTxs = CovalentBatchResponseData & {
+    transactions: Map<Chains, Map<Date, number>>;
 };
 
 async function getUserChains(userConfig: UserConfig, covaClient: Client): Promise<[Map<Chains, ChainItem>, string]> {
@@ -87,6 +94,43 @@ async function fetchCovalentData(userConfig: UserConfig, covaClient: Client): Pr
 
     return res;
 }
+
+async function fetchCovalentDataAndTxs(userConfig: UserConfig, covaClient: Client): Promise<CovalentBatchResponseDataAndTxs> {
+    const [userChains, resolvedAddress] = await getUserChains(userConfig, covaClient);
+    const chainList: Chains[] = Array.from(userChains.keys());
+
+    const balancesRes: Map<Chains, BalanceItem[]> = new Map<Chains, BalanceItem[]>();
+    const transactionSummaryRes: Map<Chains, TransactionsSummary[]> = new Map<Chains, TransactionsSummary[]>();
+
+    const promises = chainList.map(async (chain) => {
+        const [transactionSummaryResp, balancesResp] = await Promise.all([
+            covaClient.TransactionService.getTransactionSummary(chain, resolvedAddress),
+            covaClient.BalanceService.getTokenBalancesForWalletAddress(chain, resolvedAddress, { quoteCurrency: userConfig.currency }),
+        ]);
+
+        if(balancesResp.data != null) {
+            balancesRes.set(chain, balancesResp.data.items);
+        }
+
+        if (transactionSummaryResp.data != null) {
+            transactionSummaryRes.set(chain, transactionSummaryResp.data.items);
+        }
+
+        //TODO iterate through all the transactions for the chain (up to the last year), and update the map with the total number of transactions for each day
+    });
+
+    await Promise.all(promises);
+
+    const res:CovalentBatchResponseDataAndTxs = {
+        userChains: userChains,
+        balances: balancesRes,
+        address: resolvedAddress,
+        transactionSummary: transactionSummaryRes,
+        transactions: new Map<Chains, Map<Date, number>>()
+    };
+
+    return res;
+}
   
 function findChainByChainName(chainName: string, chainItems: ChainItem[]): ChainItem {
   const foundChain: ChainItem | undefined = chainItems.find(chain => chain.name === chainName);
@@ -108,6 +152,14 @@ const Translate = ({x=0,y=0,children}: TranslateProps) => {
     );
 };
 
+const LineBreak = ({userConfig, length}: {userConfig: UserConfig, length: number}) => {
+    return (
+        <g>
+            <line x1="0" y1="0" x2={length} y2="0" stroke={userConfig.fillColor} strokeWidth="1" />
+        </g>
+    );
+}
+
 type SVGProps = {
     height: number;
     width: number;
@@ -126,7 +178,7 @@ const SVGWrapper = ({ height, width, children }: SVGProps) => {
 };
 
 const Address = ({userConfig, covalentData}: {userConfig: UserConfig, covalentData: CovalentBatchResponseData}) => {
-    const isNonstandardAddress: boolean = covalentData.address != userConfig.address.toLowerCase();
+    const isNonstandardAddress: boolean = covalentData.address.toLowerCase() != userConfig.address.toLowerCase();
     const ellipsis = '...';
     const maxChars = 30;
 
@@ -319,7 +371,7 @@ type CardContentProps = {
     logos: Map<Chains, string>;
 };
 
-const CardContent = ({userConfig, covalentData, logos}: CardContentProps) => {
+const StandardCardContent = ({userConfig, covalentData, logos}: CardContentProps) => {
 
     return (
         <g dominantBaseline="text-before-edge" textAnchor="start" fill={userConfig.fillColor} fontFamily={userConfig.fontFamily}>
@@ -333,7 +385,6 @@ const CardContent = ({userConfig, covalentData, logos}: CardContentProps) => {
             <Translate x={380} y={125}>
                 <NetWorthDisplay userConfig={userConfig} covalentData={covalentData} />
             </Translate>
-            
         </g>
     );
 };
@@ -354,7 +405,7 @@ const Background = () => {
     );
 };
 
-function buildSVG(userConfig: UserConfig, covalentData: CovalentBatchResponseData, logos: Map<Chains, string>): string {
+function buildDefaultSVG(userConfig: UserConfig, covalentData: CovalentBatchResponseData, logos: Map<Chains, string>): string {
     const height: number = 200;
     const width: number = 450;
 
@@ -363,8 +414,30 @@ function buildSVG(userConfig: UserConfig, covalentData: CovalentBatchResponseDat
             <Background />
 
             <Translate x={36} y={30}>
-                <CardContent userConfig={userConfig} covalentData={covalentData} logos={logos}/>
+                <StandardCardContent userConfig={userConfig} covalentData={covalentData} logos={logos}/>
             </Translate>
+        </SVGWrapper>
+    );
+
+    return svg;
+}
+
+function buildTransactionsSVG(userConfig: UserConfig, covalentData: CovalentBatchResponseData, logos: Map<Chains, string>): string {
+    const height: number = 300;
+    const width: number = 450;
+
+    const svg: string = renderToStaticMarkup(
+        <SVGWrapper height={height} width={width}>
+            <Background />
+
+            <Translate x={36} y={30}>
+                <StandardCardContent userConfig={userConfig} covalentData={covalentData} logos={logos}/>
+                {/* <TransactionsHeatMap userConfig={userConfig} covalentData={covalentData} /> */}
+            </Translate>
+            <Translate x={30} y={185}>
+                <LineBreak userConfig={userConfig} length={390}/>
+            </Translate>
+            
         </SVGWrapper>
     );
 
@@ -438,16 +511,39 @@ function generateBlockScannerTxLink(chain: Chains | undefined, txHash: string): 
     return "";
 }
 
+async function generateDefaultSVG(userConfig: UserConfig): Promise<string> {
+    const covalentData: CovalentBatchResponseData = await fetchCovalentData(userConfig, covaClient);
+    const logos: Map<Chains, string> = await fetchChainLogos(covalentData);
+    return buildDefaultSVG(userConfig, covalentData, logos);
+}
+
+async function generateTransactionsSVG(userConfig: UserConfig): Promise<string> {
+    const covalentData: CovalentBatchResponseDataAndTxs = await fetchCovalentDataAndTxs(userConfig, covaClient);
+    const logos: Map<Chains, string> = await fetchChainLogos(covalentData);
+    return buildTransactionsSVG(userConfig, covalentData, logos);
+}
+
 export default async function handler(
     req: NextApiRequest,
     res: NextApiResponse<string>
   ) {
       const userConfig: UserConfig = new UserConfig(req);
-      const covalentData: CovalentBatchResponseData = await fetchCovalentData(userConfig, covaClient);
-      const logos: Map<Chains, string> = await fetchChainLogos(covalentData);
+      let svg: string = '';
       
-      const svg: string = buildSVG(userConfig, covalentData, logos);
-  
+
+      switch (userConfig.style) {
+        case 'standard' as CardStyle:
+            svg = await generateDefaultSVG(userConfig);
+            break;
+        case 'tx' as CardStyle:
+            svg = await generateTransactionsSVG(userConfig);
+            break;
+        case 'tokens':
+            break;
+        case 'nft':
+            break;
+      }
+
       res.setHeader('Content-Type', 'image/svg+xml');
       res.send(svg);
   }

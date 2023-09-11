@@ -9,7 +9,7 @@ const ImageForm: React.FC = () => {
   const [chainInput, setChainInput] = useState('all-chains');
   const [currencyInput, setCurrencyInput] = useState('USD');
   const [fontFamilyInput, setFontFamilyInput] = useState('monospace');
-  const [cardStyle, setCardStyle] = useState('default');
+  const [cardStyle, setCardStyle] = useState('standard');
   const [imageUrl, setImageUrl] = useState(`${API_URL}/api/v1/img_generator/?address=${addressInput}&chain=${chainInput}&currency=${currencyInput}&style=${cardStyle}&fontFamily=${fontFamilyInput}`);
   const [isLoading, setIsLoading] = useState(true);
   const [objectKey, setObjectKey] = useState(Math.random());
@@ -92,7 +92,8 @@ const ImageForm: React.FC = () => {
           onChange={(e) => setCardStyle(e.target.value)}
           className="w-2/12 text-center cursor-pointer text-black rounded"
         >
-          <option value="default">Default</option>
+          <option value="standard">Standard</option>
+          <option value="tx">Transactions</option>
         </select>
 
       <button 
