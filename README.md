@@ -7,7 +7,7 @@ Your customized image is updated in real-time to always reflect new transactions
 
 Get started by generating your own personalized card at [walletshare.dylanrae.ca](https://walletshare.dylanrae.ca).
 
-![sampleCard](https://walletshare.dylanrae.ca/api/v1/img_generator/?address=demo.eth&chain=all-chains&currency=USD&style=default&fontFamily=monospace)
+![sampleCard](https://walletshare.dylanrae.ca/api/v1/img_generator/?address=demo.eth&chain=all-chains&currency=USD&style=standard&fontFamily=monospace)
 
 ## Features
 - 📝 Easily renders within markdown (e.g. Github, Reddit, etc.)
