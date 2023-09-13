@@ -38,7 +38,7 @@ type CovalentBatchResponseData = {
 };
 
 type CovalentBatchResponseDataAndTxs = CovalentBatchResponseData & {
-    transactions: Map<Chains, Map<Date, number>>;
+    transactions: Map<Chains, Map<string, number>>;
 };
 
 async function getUserChains(userConfig: UserConfig, covaClient: Client): Promise<[Map<Chains, ChainItem>, string]> {
@@ -101,32 +101,43 @@ async function fetchCovalentDataAndTxs(userConfig: UserConfig, covaClient: Clien
 
     const balancesRes: Map<Chains, BalanceItem[]> = new Map<Chains, BalanceItem[]>();
     const transactionSummaryRes: Map<Chains, TransactionsSummary[]> = new Map<Chains, TransactionsSummary[]>();
+    const transactionsRes: Map<Chains, Map<string, number>> = new Map<Chains, Map<string, number>>();
 
     const promises = chainList.map(async (chain) => {
-        const [transactionSummaryResp, balancesResp] = await Promise.all([
-            covaClient.TransactionService.getTransactionSummary(chain, resolvedAddress),
-            covaClient.BalanceService.getTokenBalancesForWalletAddress(chain, resolvedAddress, { quoteCurrency: userConfig.currency }),
-        ]);
+        const transactionSummaryPromise = covaClient.TransactionService.getTransactionSummary(chain, resolvedAddress);
+        const balancesPromise = covaClient.BalanceService.getTokenBalancesForWalletAddress(chain, resolvedAddress, { quoteCurrency: userConfig.currency });
+        const transactionsPromise = (async () => {
+            const transactions: Map<string, number> = new Map<string, number>();
+            for await (const tx of covaClient.TransactionService.getAllTransactionsForAddress(chain, resolvedAddress)) {
+                const date = new Date(tx.block_signed_at);
+                const dateString = date.toISOString().split('T')[0]; // convert to 'YYYY-MM-DD'
+                const count = transactions.get(dateString) || 0;
+                transactions.set(dateString, count + 1);
+            }
+            return transactions;
+        })();
 
-        if(balancesResp.data != null) {
-            balancesRes.set(chain, balancesResp.data.items);
-        }
+        return Promise.all([transactionSummaryPromise, balancesPromise, transactionsPromise]).then(([transactionSummaryResp, balancesResp, transactions]) => {
+            if(balancesResp.data != null) {
+                balancesRes.set(chain, balancesResp.data.items);
+            }
 
-        if (transactionSummaryResp.data != null) {
-            transactionSummaryRes.set(chain, transactionSummaryResp.data.items);
-        }
+            if (transactionSummaryResp.data != null) {
+                transactionSummaryRes.set(chain, transactionSummaryResp.data.items);
+            }
 
-        //TODO iterate through all the transactions for the chain (up to the last year), and update the map with the total number of transactions for each day
+            transactionsRes.set(chain, transactions);
+        });
     });
 
     await Promise.all(promises);
 
-    const res:CovalentBatchResponseDataAndTxs = {
+    const res: CovalentBatchResponseDataAndTxs = {
         userChains: userChains,
         balances: balancesRes,
         address: resolvedAddress,
         transactionSummary: transactionSummaryRes,
-        transactions: new Map<Chains, Map<Date, number>>()
+        transactions: transactionsRes
     };
 
     return res;
@@ -159,6 +170,62 @@ const LineBreak = ({userConfig, length}: {userConfig: UserConfig, length: number
         </g>
     );
 }
+
+const HeatMap = ({userConfig, covalentData}: {userConfig: UserConfig, covalentData: CovalentBatchResponseDataAndTxs}) => {
+    const daysInYear = 274;
+    const weeksInYear = 52;
+    const daysInWeek = 7;
+    const cellSize = 12; // adjust as needed
+    const minOpacity = 0.12; // minimum opacity for cells with transactions
+    const cells: JSX.Element[] = [];
+
+    // Calculate the maximum number of transactions in a day
+    let maxTransactions = 0;
+    for (let day = 0; day < daysInYear; day++) {
+        let totalTransactions = 0;
+        for (let [chain, transactions] of covalentData.transactions) {
+            const date = new Date();
+            date.setFullYear(new Date().getFullYear(), 0, day + 1); // set date to the current day of the year
+            const dateString = date.toISOString().split('T')[0]; // convert to 'YYYY-MM-DD'
+            totalTransactions += transactions.get(dateString) || 0;
+        }
+        maxTransactions = Math.max(maxTransactions, totalTransactions);
+    }
+
+    // Create the heatmap cells
+    for (let day = 0; day < daysInYear; day++) {
+        const week = Math.floor(day / daysInWeek);
+        const dayOfWeek = day % daysInWeek;
+
+        let totalTransactions = 0;
+        for (let [chain, transactions] of covalentData.transactions) {
+            const date = new Date();
+            date.setFullYear(new Date().getFullYear(), 0, day + 1); // set date to the current day of the year
+            const dateString = date.toISOString().split('T')[0]; // convert to 'YYYY-MM-DD'
+            totalTransactions += transactions.get(dateString) || 0;
+        }
+
+        const opacity = totalTransactions > 0 ? Math.max(minOpacity, totalTransactions / maxTransactions) : 0;
+
+        cells.push(
+            <Translate key={"translate-"+day} x={week * cellSize } y={dayOfWeek * cellSize }>
+                <HeatMapCell key={"heatmapcell-"+day} userConfig={userConfig} covalentData={covalentData} x={0} y={0} width={cellSize} height={cellSize} opacity={opacity} />
+            </Translate>
+        );
+    }
+
+    return (
+        <g>
+            {cells}
+        </g>
+    );
+};
+
+const HeatMapCell = ({userConfig, covalentData, x, y, width, height, opacity}: {userConfig: UserConfig, covalentData: CovalentBatchResponseDataAndTxs, x: number, y: number, width: number, height: number, opacity: number}) => {
+    return (
+        <rect x={x} y={y} width={width - 2} height={height - 2} rx={2} ry={2} fill={`rgba(0, 255, 0, ${opacity})`} />
+    );
+};
 
 type SVGProps = {
     height: number;
@@ -422,7 +489,7 @@ function buildDefaultSVG(userConfig: UserConfig, covalentData: CovalentBatchResp
     return svg;
 }
 
-function buildTransactionsSVG(userConfig: UserConfig, covalentData: CovalentBatchResponseData, logos: Map<Chains, string>): string {
+function buildTransactionsSVG(userConfig: UserConfig, covalentData: CovalentBatchResponseDataAndTxs, logos: Map<Chains, string>): string {
     const height: number = 300;
     const width: number = 450;
 
@@ -432,7 +499,9 @@ function buildTransactionsSVG(userConfig: UserConfig, covalentData: CovalentBatc
 
             <Translate x={36} y={30}>
                 <StandardCardContent userConfig={userConfig} covalentData={covalentData} logos={logos}/>
-                {/* <TransactionsHeatMap userConfig={userConfig} covalentData={covalentData} /> */}
+                <Translate x={0} y={165}>
+                    <HeatMap userConfig={userConfig} covalentData={covalentData}/>
+                </Translate>
             </Translate>
             <Translate x={30} y={185}>
                 <LineBreak userConfig={userConfig} length={390}/>
@@ -519,6 +588,7 @@ async function generateDefaultSVG(userConfig: UserConfig): Promise<string> {
 
 async function generateTransactionsSVG(userConfig: UserConfig): Promise<string> {
     const covalentData: CovalentBatchResponseDataAndTxs = await fetchCovalentDataAndTxs(userConfig, covaClient);
+    console.log(covalentData.transactions);
     const logos: Map<Chains, string> = await fetchChainLogos(covalentData);
     return buildTransactionsSVG(userConfig, covalentData, logos);
 }
@@ -542,6 +612,8 @@ export default async function handler(
             break;
         case 'nft':
             break;
+        default:
+            svg = await generateDefaultSVG(userConfig);
       }
 
       res.setHeader('Content-Type', 'image/svg+xml');
