@@ -172,7 +172,7 @@ const LineBreak = ({userConfig, length}: {userConfig: UserConfig, length: number
 }
 
 const HeatMap = ({userConfig, covalentData}: {userConfig: UserConfig, covalentData: CovalentBatchResponseDataAndTxs}) => {
-    const daysInYear = 274;
+    const daysInYear = 224;
     const weeksInYear = 52;
     const daysInWeek = 7;
     const cellSize = 12; // adjust as needed
@@ -222,8 +222,15 @@ const HeatMap = ({userConfig, covalentData}: {userConfig: UserConfig, covalentDa
 };
 
 const HeatMapCell = ({userConfig, covalentData, x, y, width, height, opacity}: {userConfig: UserConfig, covalentData: CovalentBatchResponseDataAndTxs, x: number, y: number, width: number, height: number, opacity: number}) => {
+    let rgbaConfig: string = ''
+    if (opacity ===0) {
+        rgbaConfig = '22,27,34';
+        opacity = 1;
+    } else {
+        rgbaConfig = '0,255,0';
+    }
     return (
-        <rect x={x} y={y} width={width - 2} height={height - 2} rx={2} ry={2} fill={`rgba(0, 255, 0, ${opacity})`} />
+        <rect x={x} y={y} width={width - 2} height={height - 2} rx={2} ry={2} fill={`rgba(${rgbaConfig}, ${opacity})`} />
     );
 };
 
@@ -264,7 +271,8 @@ const Address = ({userConfig, covalentData}: {userConfig: UserConfig, covalentDa
                 {displayAddress}
             </text>
 
-            <Translate x={5.25} y={18}>
+            {/* <Translate x={5.25} y={18}> */}
+            <Translate x={0} y={18}>
                 <text fontSize="10" >
                     {displayCovalentAddress}
                 </text>
@@ -499,7 +507,7 @@ function buildTransactionsSVG(userConfig: UserConfig, covalentData: CovalentBatc
 
             <Translate x={36} y={30}>
                 <StandardCardContent userConfig={userConfig} covalentData={covalentData} logos={logos}/>
-                <Translate x={0} y={165}>
+                <Translate x={0} y={168}>
                     <HeatMap userConfig={userConfig} covalentData={covalentData}/>
                 </Translate>
             </Translate>
@@ -588,7 +596,6 @@ async function generateDefaultSVG(userConfig: UserConfig): Promise<string> {
 
 async function generateTransactionsSVG(userConfig: UserConfig): Promise<string> {
     const covalentData: CovalentBatchResponseDataAndTxs = await fetchCovalentDataAndTxs(userConfig, covaClient);
-    console.log(covalentData.transactions);
     const logos: Map<Chains, string> = await fetchChainLogos(covalentData);
     return buildTransactionsSVG(userConfig, covalentData, logos);
 }
