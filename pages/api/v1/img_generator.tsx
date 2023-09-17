@@ -176,7 +176,7 @@ const HeatMap = ({userConfig, covalentData}: {userConfig: UserConfig, covalentDa
     const weeksInYear = 52;
     const daysInWeek = 7;
     const cellSize = 12; // adjust as needed
-    const minOpacity = 0.12; // minimum opacity for cells with transactions
+    const minOpacity = 0.19; // minimum opacity for cells with transactions
     const cells: JSX.Element[] = [];
 
     // Calculate the maximum number of transactions in a day
