@@ -93,6 +93,7 @@ const ImageForm: React.FC = () => {
           className="w-2/12 text-center cursor-pointer text-black rounded"
         >
           <option value="standard">Standard</option>
+          <option value="tokens">Tokens</option>
           <option value="tx">Transactions</option>
         </select>
 

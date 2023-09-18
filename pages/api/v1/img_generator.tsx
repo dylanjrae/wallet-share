@@ -37,6 +37,9 @@ type CovalentBatchResponseData = {
   transactionSummary: Map<Chains, TransactionsSummary[]>;
 };
 
+type BalanceItemWithChain = BalanceItem & {
+    chain: Chains;
+};
 type CovalentBatchResponseDataAndTxs = CovalentBatchResponseData & {
     transactions: Map<Chains, Map<string, number>>;
 };
@@ -148,6 +151,30 @@ function findChainByChainName(chainName: string, chainItems: ChainItem[]): Chain
   return foundChain ? foundChain : chainItems[0];
 }
 
+function findTopTokens(balances: Map<Chains, BalanceItem[]>, numTokens: number): BalanceItemWithChain[] {
+    const topTokens: BalanceItemWithChain[] = [];
+    for (let [chain, chainBalances] of balances) {
+        for (let balance of chainBalances) {
+            if (topTokens.length < numTokens) {
+                topTokens.push({...balance, chain: chain});
+                topTokens.sort(sortBalanceItems);
+            } else if (balance.quote > topTokens[topTokens.length - 1].quote) {
+                topTokens.pop();
+                topTokens.push({...balance, chain: chain});
+                topTokens.sort(sortBalanceItems);
+            }
+        }
+    }
+
+    return topTokens;
+}
+
+function sortBalanceItems(a:BalanceItem, b:BalanceItem) {
+    if (a.quote > b.quote) return -1;
+    if (a.quote < b.quote) return 1;
+    return 0;
+}
+
 
 type TranslateProps = {
     x?: number;
@@ -231,6 +258,53 @@ const HeatMapCell = ({userConfig, covalentData, x, y, width, height, opacity}: {
     }
     return (
         <rect x={x} y={y} width={width - 2} height={height - 2} rx={2} ry={2} fill={`rgba(${rgbaConfig}, ${opacity})`} />
+    );
+};
+
+const MultiTokenDisplay = ({userConfig, covalentData}: {userConfig: UserConfig, covalentData: CovalentBatchResponseData}) => {
+    const topTokens: BalanceItemWithChain[] = findTopTokens(covalentData.balances, 3);
+    return (
+        <g dominantBaseline="text-before-edge" textAnchor="start" fill={userConfig.fillColor} fontFamily={userConfig.fontFamily}>
+            <Translate x={0} y={0}>
+                <TokenDisplay userConfig={userConfig} token={topTokens[0]}/>
+            </Translate>
+
+            <Translate x={190} y={0}>
+                <g textAnchor='middle'>
+                    <TokenDisplay userConfig={userConfig} token={topTokens[1]}/>
+                </g>
+                
+            </Translate>
+
+            <Translate x={380} y={0}>
+                <g textAnchor="end">
+                    <TokenDisplay userConfig={userConfig} token={topTokens[2]}/>
+                </g>
+            </Translate>
+        </g>
+    );
+};
+
+const TokenDisplay = ({userConfig, token} : {userConfig: UserConfig, token: BalanceItemWithChain}) => {
+
+    return (
+        <g>
+            <text>
+                {token.contract_name}
+            </text>
+
+            <Translate x={0} y={20}>
+                <text>
+                    {token.contract_ticker_symbol}
+                </text>
+            </Translate>
+
+            <Translate x={0} y={40}>
+                <text>
+                    {formatAsCurrency(token.quote, userConfig.currency)}
+                </text>
+            </Translate>
+        </g>
     );
 };
 
@@ -521,6 +595,30 @@ function buildTransactionsSVG(userConfig: UserConfig, covalentData: CovalentBatc
     return svg;
 }
 
+function buildTokensSVG(userConfig: UserConfig, covalentData: CovalentBatchResponseData, logos: Map<Chains, string>): string {
+    const height: number = 300;
+    const width: number = 450;
+
+    const svg: string = renderToStaticMarkup(
+        <SVGWrapper height={height} width={width}>
+            <Background />
+
+            <Translate x={36} y={30}>
+                <StandardCardContent userConfig={userConfig} covalentData={covalentData} logos={logos}/>
+                <Translate x={0} y={178}>
+                    <MultiTokenDisplay userConfig={userConfig} covalentData={covalentData}/>
+                </Translate>
+            </Translate>
+            <Translate x={30} y={185}>
+                <LineBreak userConfig={userConfig} length={390}/>
+            </Translate>
+            
+        </SVGWrapper>
+    );
+
+    return svg;
+}
+
 async function fetchBase64Image(url: string): Promise<string> {
     const response = await fetch(url);
     const imageBlob = await response.blob();
@@ -600,6 +698,12 @@ async function generateTransactionsSVG(userConfig: UserConfig): Promise<string> 
     return buildTransactionsSVG(userConfig, covalentData, logos);
 }
 
+async function generateTokensSVG(userConfig: UserConfig): Promise<string> {
+    const covalentData: CovalentBatchResponseData = await fetchCovalentData(userConfig, covaClient);
+    const logos: Map<Chains, string> = await fetchChainLogos(covalentData);
+    return buildTokensSVG(userConfig, covalentData, logos);
+}
+
 export default async function handler(
     req: NextApiRequest,
     res: NextApiResponse<string>
@@ -616,6 +720,7 @@ export default async function handler(
             svg = await generateTransactionsSVG(userConfig);
             break;
         case 'tokens':
+            svg = await generateTokensSVG(userConfig);
             break;
         case 'nft':
             break;
