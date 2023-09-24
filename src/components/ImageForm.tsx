@@ -1,15 +1,15 @@
 'use client'
 
 import React, { useState } from 'react';
-import { API_URL } from '../../helpers';
+import { API_URL } from '../../utils/helpers';
 import { ChainItem } from '@covalenthq/client-sdk';
 import LoadingAnimation from './LoadingAnimation';
 
 interface ImageFormProps {
-  chains: ChainItem[];
+  rawChains: string;
 }
 
-const ImageForm: React.FC<ImageFormProps> = ({ chains }) => {
+const ImageForm: React.FC<ImageFormProps> = ({ rawChains }) => {
   const [addressInput, setAddressInput] = useState('demo.eth');
   const [chainInput, setChainInput] = useState('all-chains');
   const [currencyInput, setCurrencyInput] = useState('USD');
@@ -32,6 +32,8 @@ const ImageForm: React.FC<ImageFormProps> = ({ chains }) => {
     navigator.clipboard.writeText(imageUrl);  
   };
 
+  const chains: ChainItem[] = JSON.parse(rawChains);
+
   return (
     <div className="flex flex-col items-center gap-5 font-mono">
 
@@ -46,7 +48,8 @@ const ImageForm: React.FC<ImageFormProps> = ({ chains }) => {
           onChange={(e) => setChainInput(e.target.value)}
           className=" w-4/12 text-center text-black rounded cursor-pointer"
         >
-          {chains.map((chain) => (
+          <option value="all-chains">All Chains</option>
+          {chains.filter(chain => !chain.is_testnet).map((chain) => (
             <option key={chain.chain_id} value={chain.name}>
               {chain.label}
             </option>
