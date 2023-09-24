@@ -349,6 +349,7 @@ const ChainCounter = ({userConfig, covalentData, logos}: CardContentProps) => {
 function calculateTotalTxCount(covalentData: CovalentBatchResponseData): number {
     let txCount: number = 0;
     for (let [key, value] of covalentData.transactionSummary) {
+        if (value === null) continue;
         txCount += value[0].total_count;
     }
     return txCount;
@@ -377,6 +378,23 @@ function fetchLatestTxDetails(covalentData: CovalentBatchResponseData): [Chains 
 
 const ActivitySummary = ({userConfig, covalentData, logos}: CardContentProps) => {
     const txCount: number = calculateTotalTxCount(covalentData);
+    if (txCount == 0) {
+        return (
+            <g>
+                <Translate x={0} y={0}>
+                    <text fontSize="16">
+                        {txCount}
+                    </text>
+                </Translate>
+            
+                <Translate x={0} y={18}>
+                    <text fontSize="12">
+                        {'Transactions'}
+                    </text>
+                </Translate>
+            </g>
+        );
+    }
     const [chain, lastActivityStr, txHash] = fetchLatestTxDetails(covalentData);
     const blockScannerTxLink = generateBlockScannerTxLink(chain, txHash);
     let img: string = '';
