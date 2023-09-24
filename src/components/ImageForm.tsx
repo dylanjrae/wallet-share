@@ -1,10 +1,15 @@
 'use client'
 
 import React, { useState } from 'react';
-import { API_URL } from '../../helpers';
+import { API_URL } from '../../utils/helpers';
+import { ChainItem } from '@covalenthq/client-sdk';
 import LoadingAnimation from './LoadingAnimation';
 
-const ImageForm: React.FC = () => {
+interface ImageFormProps {
+  rawChains: string;
+}
+
+const ImageForm: React.FC<ImageFormProps> = ({ rawChains }) => {
   const [addressInput, setAddressInput] = useState('demo.eth');
   const [chainInput, setChainInput] = useState('all-chains');
   const [currencyInput, setCurrencyInput] = useState('USD');
@@ -27,6 +32,8 @@ const ImageForm: React.FC = () => {
     navigator.clipboard.writeText(imageUrl);  
   };
 
+  const chains: ChainItem[] = JSON.parse(rawChains);
+
   return (
     <div className="flex flex-col items-center gap-5 font-mono">
 
@@ -42,20 +49,11 @@ const ImageForm: React.FC = () => {
           className=" w-4/12 text-center text-black rounded cursor-pointer"
         >
           <option value="all-chains">All Chains</option>
-          <option value="eth-mainnet">Ethereum Mainnet</option>
-          <option value="matic-mainnet">Polygon Mainnet</option>
-          <option value="avalanche-mainnet">Avalanche C-Chain Mainnet</option>
-          <option value="bsc-mainnet">BNB Smart Chain</option>
-          <option value="moonbeam-mainnet">Moonbeam Mainnet</option>
-          <option value="rsk-mainnet">RSK Mainnet</option>
-          <option value="arbitrum-mainnet">Arbitrum Mainnet</option>
-          <option value="fantom-mainnet">Fantom Opera</option>
-          <option value="palm-mainnet">Palm Mainnet</option>
-          <option value="axie-mainnet">Axie Mainnet</option>
-          <option value="optimism-mainnet">Synthetix Optimism Mainnet</option>
-          <option value="evmos-mainnet">EVMOS Mainnet</option>
-          <option value="base-mainnet">Base Mainnet</option>
-          <option value="zora-mainnet">Zora Mainnet</option>
+          {chains.filter(chain => !chain.is_testnet).map((chain) => (
+            <option key={chain.chain_id} value={chain.name}>
+              {chain.label}
+            </option>
+          ))}
         </select>
         <select
           value={currencyInput}

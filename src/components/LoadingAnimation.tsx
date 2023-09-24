@@ -1,6 +1,6 @@
 import React from 'react';
 import { useLottie } from "lottie-react";
-import animationData from './loading_animation.json';
+import animationData from '../../public/loading_animation.json'
 
 const LoadingAnimation = () => {
   const options = {
