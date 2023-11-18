@@ -96,7 +96,7 @@ const ImageForm: React.FC<ImageFormProps> = ({ rawChains }) => {
         </select>
 
       <button 
-        className="border border-2 border-emerald-950 bg-emerald-700 text-xl text-white px-8 py-2 mb-8 rounded-md hover:bg-emerald-800"
+        className="border border-2 border-emerald-950 bg-emerald-700 text-xl text-white px-8 py-2 mb-12 rounded-md hover:bg-emerald-800"
         onClick={handleGenerateClick}>
           Generate
       </button>
