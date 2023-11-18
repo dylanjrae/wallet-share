@@ -12,7 +12,7 @@ export default async function Home() {
           <h1 className="text-center text-4xl tracking-wide font-mono mt-12">Wallet Card Generator</h1>
           <ImageForm rawChains={JSON.stringify(chains)}/>
         </div>
-        <h3 className="absolute bottom-0 mb-8 text-center text-sm font-mono">
+        <h3 className="absolute bottom-0 mb-5 text-center text-sm font-mono">
           Please visit the docs{' '}
           <a href="https://github.com/dylanjrae/wallet-share" className="underline text-blue-300" target="_blank" rel="noopener noreferrer">
             here

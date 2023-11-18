@@ -97,12 +97,12 @@ const ImageForm: React.FC<ImageFormProps> = ({ rawChains }) => {
         </select>
 
       <button 
-        className="border border-2 border-emerald-950 bg-emerald-700 text-xl text-white px-8 py-2 mb-14 rounded-md hover:bg-emerald-800"
+        className="border border-2 border-emerald-950 bg-emerald-700 text-xl text-white px-8 py-2 mb-6 rounded-md hover:bg-emerald-800"
         onClick={handleGenerateClick}>
           Generate
       </button>
 
-      <div style={{ display: 'flex', flexDirection: 'column', height: '200px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
         {isLoading && <LoadingAnimation />}
         <object
           key={objectKey}
@@ -113,7 +113,11 @@ const ImageForm: React.FC<ImageFormProps> = ({ rawChains }) => {
           style={{ flex: 1 }}        />
       </div>
 
-      <UrlDisplayField imageUrl={imageUrl} handleUrlClick={handleUrlClick} />
+      {isLoading ? 
+        <div className="w-[832px]"></div> 
+        : 
+        <UrlDisplayField imageUrl={imageUrl} handleUrlClick={handleUrlClick} />
+      }
 
     </div>
   );
