@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { API_URL } from '../../utils/helpers';
 import { ChainItem } from '@covalenthq/client-sdk';
 import LoadingAnimation from './LoadingAnimation';
+import UrlDisplayField from './UrlDisplayField';
 
 interface ImageFormProps {
   rawChains: string;
@@ -96,7 +97,7 @@ const ImageForm: React.FC<ImageFormProps> = ({ rawChains }) => {
         </select>
 
       <button 
-        className="border border-2 border-emerald-950 bg-emerald-700 text-xl text-white px-8 py-2 mb-12 rounded-md hover:bg-emerald-800"
+        className="border border-2 border-emerald-950 bg-emerald-700 text-xl text-white px-8 py-2 mb-14 rounded-md hover:bg-emerald-800"
         onClick={handleGenerateClick}>
           Generate
       </button>
@@ -112,12 +113,8 @@ const ImageForm: React.FC<ImageFormProps> = ({ rawChains }) => {
           style={{ flex: 1 }}        />
       </div>
 
-      <p 
-        className = "cursor-pointer tracking-widest text-white text-xs border border-gray-500 bg-slate-900 hover:bg-violet-950 px-4 py-2 rounded w-[50rem] ellipses truncate"
-        onClick={handleUrlClick}
-      >
-        {imageUrl}
-      </p>
+      <UrlDisplayField imageUrl={imageUrl} handleUrlClick={handleUrlClick} />
+
     </div>
   );
 };
