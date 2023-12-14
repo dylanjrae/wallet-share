@@ -9,7 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@covalenthq/client-sdk": "^0.6.3",
+    "@covalenthq/client-sdk": "^0.6.7",
     "@types/node": "20.3.2",
     "@types/react": "18.2.14",
     "@types/react-dom": "18.2.6",
